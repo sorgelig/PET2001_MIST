@@ -45,3 +45,11 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+
+*.qws
+db
+output
+greybox_tmp
+incremental_db
+simulation
+PLLJ_PLLSPE_INFO.txt
