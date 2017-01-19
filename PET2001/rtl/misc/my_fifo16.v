@@ -89,14 +89,12 @@ module my_fifo16(output [7:0]	rd_data,
     genvar i;
     generate
 	for (i=0; i<8; i=i+1) begin:rams
-            RAM16X1D ram(.q_a(wr_data[i]),
-                         .address_a(wr_ptr),
+            RAM16X1D ram(.q(wr_data[i]),
+                         .wraddress(wr_ptr),
                          .clock(clk),
-                         .wren_a(wr_strobe),
-
-                         .q_b(rd_data[i]),
-                         .address_b(rd_ptr),
-								 .wren_b(wr_strobe)
+                         .wren(wr_strobe),
+                         .data(rd_data[i]),
+                         .rdaddress(rd_ptr)
 		 );
 	end
     endgenerate
