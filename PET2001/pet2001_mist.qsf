@@ -170,6 +170,8 @@ set_global_assignment -name SEARCH_PATH rtl/ -tag from_archive
 set_global_assignment -name SEARCH_PATH rtl/cpu6502/ -tag from_archive
 set_global_assignment -name SEARCH_PATH rtl/misc/ -tag from_archive
 set_global_assignment -name SEARCH_PATH rtl/pet2001hw/ -tag from_archive
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/video_mixer.sv
+set_global_assignment -name VERILOG_FILE rtl/scandoubler.v
 set_global_assignment -name VERILOG_FILE rtl/tape.v
 set_global_assignment -name QIP_FILE rtl/pet2001_rom.qip
 set_global_assignment -name VERILOG_FILE rtl/osd.v

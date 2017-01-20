@@ -38,201 +38,195 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 
-module pet2001hw(
-		 input [15:0] 	  addr, // CPU Interface
-	         input [7:0] 	  data_in,
-	         output reg [7:0] data_out,
-	         input 		  we,
-	         output 	  rdy,
-	         output 	  nmi,
-	         output 	  irq,
+module pet2001hw
+(
+	input [15:0]     addr, // CPU Interface
+	input [7:0]      data_in,
+	output reg [7:0] data_out,
+	input            we,
+	output           rdy,
+	output           nmi,
+	output           irq,
 
-	         output [5:0] 	  vga_r, // VGA
-	         output [5:0] 	  vga_g,
-	         output [5:0] 	  vga_b,
-	         output 	  vga_hsync,
-	         output 	  vga_vsync,
+	output           pix,
+	output           HSync,
+	output           VSync,
 
-                 output [3:0] 	  keyrow, // Keyboard
-                 input [7:0] 	  keyin,
+	output [3:0]     keyrow, // Keyboard
+	input  [7:0]     keyin,
 
-                 output 	  cass_motor_n, // Cassette
-                 output 	  cass_write,
-                 input 		  cass_sense_n,
-                 input 		  cass_read,
-                 input 		  tape_data,
-                 output 	  audio, // CB2 audio
+	output           cass_motor_n, // Cassette
+	output           cass_write,
+	input            cass_sense_n,
+	input            cass_read,
+	input            tape_data,
+	output           audio, // CB2 audio
 
-                 input 		  clk_speed,
-                 input 		  clk_stop,
-                 input 		  diag_l,
-                 input 		  video_green,
-	         input 		  clk,
-	         input 		  reset
-	 );
+	input            clk_speed,
+	input            clk_stop,
+	input            diag_l,
+	input            clk,
+	input            ce_7mp,
+	input            ce_7mn,
+	input            ce_1m,
+	input            reset
+);
 
-    assign   nmi = 0;    // unused for now
+assign   nmi = 0;    // unused for now
 
-    ////////////////////////////////////////////////////////////////
-    // Create a 1Mhz "slow clock" (actually it's a pulse).  This
-    // will pace the CPU and VIA Timers at close to original speed.
-    // Asserting clk_speed will let everything go at full speed.
-    // Asserting clk_stop will suspend it.
-    ///////////////////////////////////////////////////////////////
-    reg [6:0] 	clkdiv;
-    reg 	slow_clock;
-    
-//`ifdef CLK100MHZ
-// `define CLKDIV_VAL 7'd99
-//`elsif CLK25MHZ
-// `define CLKDIV_VAL 7'd24
-//`else
- `define CLKDIV_VAL 7'd49
-//`endif
-    
-    always @(posedge clk)
-	if (reset || clkdiv == 7'd0)
-	    clkdiv <= `CLKDIV_VAL;
-	else
-	    clkdiv <= clkdiv - 1'b1;
-
-    always @(posedge clk)
+////////////////////////////////////////////////////////////////
+// Asserting clk_speed will let everything go at full speed.
+// Asserting clk_stop will suspend it.
+///////////////////////////////////////////////////////////////
+reg 	slow_clock;
+ 
+always @(posedge clk) begin
 	if (reset)
-            slow_clock <= 1'b0;
+		slow_clock <= 0;
 	else
-            slow_clock <= (clk_speed || clkdiv == 7'd1) && !clk_stop;
-   
-    ///////////////////////////////////////////////////////////////
-    // rdy logic: A wait state is needed for video RAM and I/O.  rdy is also
-    // held back until slow_clock pulse if clk_speed isn't asserted.
-    ///////////////////////////////////////////////////////////////
-    reg 	rdy_r;
-    wire 	needs_cycle = (addr[15:11] == 5'b1110_1);
+		slow_clock <= (clk_speed || ce_1m) && !clk_stop;
+end
 
-    assign rdy = rdy_r || (clk_speed && !needs_cycle);
-		 
-    always @(posedge clk)
+///////////////////////////////////////////////////////////////
+// rdy logic: A wait state is needed for video RAM and I/O.  rdy is also
+// held back until slow_clock pulse if clk_speed isn't asserted.
+///////////////////////////////////////////////////////////////
+reg 	rdy_r;
+wire 	needs_cycle = (addr[15:11] == 5'b1110_1);
+
+assign rdy = rdy_r || (clk_speed && !needs_cycle);
+	 
+always @(posedge clk) begin
 	if (reset)
-            rdy_r <= 0;
+		rdy_r <= 0;
 	else
-            rdy_r <= slow_clock && ! rdy;
-    
-    /////////////////////////////////////////////////////////////
-    // Pet ROMS incuding character ROM.  Character data is read
-    // out second port.  This brings total ROM to 16K which is
-    // easy to arrange.
-    /////////////////////////////////////////////////////////////
-    wire [7:0]	rom_data;
-   
-    wire [10:0] charaddr;
-    wire [7:0] 	chardata;
+		rdy_r <= slow_clock && ! rdy;
+end
+ 
+/////////////////////////////////////////////////////////////
+// Pet ROMS incuding character ROM.  Character data is read
+// out second port.  This brings total ROM to 16K which is
+// easy to arrange.
+/////////////////////////////////////////////////////////////
+wire [7:0]	rom_data;
 
-		  
-		  	 pet2001_rom rom(
-			.q_a(rom_data),
-			.q_b(chardata),
-			.address_a(addr[13:0]),
-			.address_b({3'b101,charaddr}),
-			.clock(~clk));	
+wire [10:0] charaddr;
+wire [7:0] 	chardata;
 
-      
-    //////////////////////////////////////////////////////////////
-    // Pet RAM and video RAM.  Video RAM is dual ported.
-    //////////////////////////////////////////////////////////////
-    wire [7:0] 	ram_data;
-    wire [7:0] 	vram_data;
-    wire [7:0] 	video_data;
-    wire [10:0] video_addr;
+	  
+pet2001_rom rom
+(
+	.q_a(rom_data),
+	.q_b(chardata),
+	.address_a(addr[13:0]),
+	.address_b({3'b101,charaddr}),
+	.clock(~clk)
+);
 
-    wire	ram_we = we && (addr[15:14] == 2'b00);
-    wire	vram_we = we && (addr[15:11] == 5'b1000_0);
+	
+//////////////////////////////////////////////////////////////
+// Pet RAM and video RAM.  Video RAM is dual ported.
+//////////////////////////////////////////////////////////////
+wire [7:0] 	ram_data;
+wire [7:0] 	vram_data;
+wire [7:0] 	video_data;
+wire [10:0] video_addr;
 
-    pet2001ram ram(.q(ram_data),
-                   .data(data_in),
-                   .address(addr[13:0]),
-                   .wren(ram_we),       
-                   .clock(clk)
-	   );
+wire	ram_we = we && (addr[15:14] == 2'b00);
+wire	vram_we = we && (addr[15:11] == 5'b1000_0);
 
-    pet2001vidram vidram(.data_out(vram_data),
-                         .data_in(data_in),
-                         .cpu_addr(addr[10:0]),
-                         .we(vram_we),       
-                         .video_addr(video_addr),
-                         .video_data(video_data),      
-                         .clk(clk)
-		 );
+pet2001ram ram
+(
+	.q(ram_data),
+	.data(data_in),
+	.address(addr[13:0]),
+	.wren(ram_we),       
+	.clock(clk)
+);
 
-   //////////////////////////////////////
-   // Video hardware.
-   //////////////////////////////////////
-    wire	video_on;	// signal indicating VGA is scanning visible
-    				// rows.  Used to generate tick interrupts.
-    wire 	video_blank;	// blank screen during scrolling
-    wire	video_gfx;	// display graphic characters vs. lower-case
-    
-    pet2001video vid(.vga_r(vga_r),
-                     .vga_g(vga_g),
-                     .vga_b(vga_b),
-                     .vga_hsync(vga_hsync),
-                     .vga_vsync(vga_vsync),
-                     .video_addr(video_addr),
-                     .video_data(video_data),        
-                     .charaddr(charaddr),
-                     .chardata(chardata),
-                     .video_on(video_on),
-                     .video_blank(video_blank),
-                     .video_gfx(video_gfx),
-							.video_green(video_green),
-                     .clk(clk),
-                     .reset(reset)
-	     );
-    
-    ////////////////////////////////////////////////////////
-    // I/O hardware
-    ////////////////////////////////////////////////////////
-    wire [7:0] 	io_read_data;
-    wire 	io_we = we && (addr[15:11] == 5'b1110_1);
+pet2001vidram vidram
+(
+	.data_out(vram_data),
+	.data_in(data_in),
+	.cpu_addr(addr[10:0]),
+	.we(vram_we),
+	.video_addr(video_addr),
+	.video_data(video_data),
+	.clk(clk)
+);
 
-    pet2001io io(.data_out(io_read_data),
-                 .data_in(data_in),
-                 .addr(addr[10:0]),
-                 .rdy(rdy),
-                 .we(io_we),
-                 .irq(irq),
-					  .keyrow(keyrow),
-		           .keyin(keyin),		 
-                 .video_sync(video_on),
-                 .video_blank(video_blank),
-                 .video_gfx(video_gfx),
-                 .cass_motor_n(cass_motor_n),
-                 .cass_write(cass_write),
-                 .audio(audio),
-                 .cass_sense_n(cass_sense_n),
-                 .cass_read(cass_read),
-					  .tape_data(tape_data),
-                 .diag_l(diag_l),	
-                 .slow_clock(slow_clock),        
-                 .clk(clk),
-                 .reset(reset)
-	 );
+//////////////////////////////////////
+// Video hardware.
+//////////////////////////////////////
+wire	video_on;    // signal indicating VGA is scanning visible
+				       // rows.  Used to generate tick interrupts.
+wire 	video_blank; // blank screen during scrolling
+wire	video_gfx;	 // display graphic characters vs. lower-case
+ 
+pet2001video vid
+(
+	.pix(pix),
+	.HSync(HSync),
+	.VSync(VSync),
+	.video_addr(video_addr),
+	.video_data(video_data),        
+	.charaddr(charaddr),
+	.chardata(chardata),
+	.video_on(video_on),
+	.video_blank(video_blank),
+	.video_gfx(video_gfx),
+	.clk(clk),
+	.ce_7mp(ce_7mp),
+	.ce_7mn(ce_7mn),
+	.reset(reset)
+);
+ 
+////////////////////////////////////////////////////////
+// I/O hardware
+////////////////////////////////////////////////////////
+wire [7:0] 	io_read_data;
+wire 	io_we = we && (addr[15:11] == 5'b1110_1);
 
-    /////////////////////////////////////
-    // Read data mux (to CPU)
-    /////////////////////////////////////
-    always @(*)
-	casex (addr[15:11])
-            5'b1110_1:           		// E800
+pet2001io io
+(
+	.data_out(io_read_data),
+	.data_in(data_in),
+	.addr(addr[10:0]),
+	.rdy(rdy),
+	.we(io_we),
+	.irq(irq),
+	.keyrow(keyrow),
+	.keyin(keyin),		 
+	.video_sync(video_on),
+	.video_blank(video_blank),
+	.video_gfx(video_gfx),
+	.cass_motor_n(cass_motor_n),
+	.cass_write(cass_write),
+	.audio(audio),
+	.cass_sense_n(cass_sense_n),
+	.cass_read(cass_read),
+	.tape_data(tape_data),
+	.diag_l(diag_l),	
+	.slow_clock(slow_clock),        
+	.clk(clk),
+	.reset(reset)
+);
+
+/////////////////////////////////////
+// Read data mux (to CPU)
+/////////////////////////////////////
+always @(*)
+casex(addr[15:11])
+	5'b1110_1:                 // E800
 		data_out = io_read_data;
-            5'b11xx_x:           		// C000-FFFF
+	5'b11xx_x:                 // C000-FFFF
 		data_out = rom_data;
-            5'b1000_0:				// 8000-87FF
+	5'b1000_0:                 // 8000-87FF
 		data_out = vram_data;
-            5'b00xx_x:				// 0000-3FFF
+	5'b00xx_x:                 // 0000-3FFF
 		data_out = ram_data;
-            default:
+	default:
 		data_out = 8'h55;
-	endcase
-    
-endmodule // pet2001hw
+endcase
 
+endmodule // pet2001hw

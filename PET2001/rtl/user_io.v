@@ -37,6 +37,7 @@ module user_io #(parameter STRLEN=0) (
 	output [1:0] 		buttons,
 	output [1:0] 		switches,
 	output  				scandoubler_disable,
+	output  				ypbpr,
 
 	output reg [7:0]   status,
 
@@ -71,12 +72,13 @@ reg [2:0] 	      bit_cnt;    // counts bits 0-7 0-7 ...
 reg [7:0]         byte_cnt;   // counts bytes
 reg [7:0]         joystick0;
 reg [7:0]         joystick1;
-reg [4:0] 	      but_sw;
+reg [7:0] 	      but_sw;
 reg [2:0]         stick_idx;
 
 assign buttons = but_sw[1:0];
 assign switches = but_sw[3:2];
 assign scandoubler_disable = but_sw[4];
+assign ypbpr = but_sw[5];
 
 // this variant of user_io is for 8 bit cores (type == a4) only
 wire [7:0] core_type = 8'ha4;
@@ -160,7 +162,7 @@ always@(posedge ps2_clk) begin
 	ps2_kbd_r_inc <= 1'b0;
 	
 	if(ps2_kbd_r_inc)
-		ps2_kbd_rptr <= ps2_kbd_rptr + 1;
+		ps2_kbd_rptr <= ps2_kbd_rptr + 1'd1;
 
 	// transmitter is idle?
 	if(ps2_kbd_tx_state == 0) begin
@@ -225,7 +227,7 @@ always@(posedge ps2_clk) begin
 	ps2_mouse_r_inc <= 1'b0;
 	
 	if(ps2_mouse_r_inc)
-		ps2_mouse_rptr <= ps2_mouse_rptr + 1;
+		ps2_mouse_rptr <= ps2_mouse_rptr + 1'd1;
 
 	// transmitter is idle?
 	if(ps2_mouse_tx_state == 0) begin
@@ -290,7 +292,7 @@ always @(posedge serial_strobe or posedge status[0]) begin
 		serial_out_wptr <= 0;
 	end else begin 
 		serial_out_fifo[serial_out_wptr] <= serial_data;
-		serial_out_wptr <= serial_out_wptr + 1;
+		serial_out_wptr <= serial_out_wptr + 1'd1;
 	end
 end 
 
@@ -301,7 +303,7 @@ always@(negedge spi_sck or posedge status[0]) begin
 		if((byte_cnt != 0) && (cmd == 8'h1b)) begin
 			// read last bit -> advance read pointer
 			if((bit_cnt == 7) && !byte_cnt[0] && serial_out_data_available)
-				serial_out_rptr <= serial_out_rptr + 1;
+				serial_out_rptr <= serial_out_rptr + 1'd1;
 		end
 	end
 end
@@ -340,7 +342,7 @@ always@(posedge spi_sck or posedge SPI_SS_IO) begin
 			
 				// buttons and switches
 				if(cmd == 8'h01)
-					but_sw <= { sbuf[3:0], SPI_MOSI }; 
+					but_sw <= { sbuf[6:0], SPI_MOSI }; 
 
 				if(cmd == 8'h02)
 					joystick_0 <= { sbuf, SPI_MOSI };
@@ -351,13 +353,13 @@ always@(posedge spi_sck or posedge SPI_SS_IO) begin
 				if(cmd == 8'h04) begin
 					// store incoming ps2 mouse bytes 
 					ps2_mouse_fifo[ps2_mouse_wptr] <= { sbuf, SPI_MOSI }; 
-					ps2_mouse_wptr <= ps2_mouse_wptr + 1;
+					ps2_mouse_wptr <= ps2_mouse_wptr + 1'd1;
 				end
 
 				if(cmd == 8'h05) begin
 					// store incoming ps2 keyboard bytes 
 					ps2_kbd_fifo[ps2_kbd_wptr] <= { sbuf, SPI_MOSI }; 
-					ps2_kbd_wptr <= ps2_kbd_wptr + 1;
+					ps2_kbd_wptr <= ps2_kbd_wptr + 1'd1;
 				end
 				
 				if(cmd == 8'h15)

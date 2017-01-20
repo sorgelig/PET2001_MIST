@@ -26,19 +26,20 @@ wire  [7:0] status;
 wire  [1:0] buttons;
 wire  [1:0] switches;
 wire        scandoubler_disable;
+wire        ypbpr;
 wire        ps2_kbd_clk, ps2_kbd_data;
 
 parameter CONF_STR = {
 		  "PET2001;TAP;",//12
 //		  "O1,Romtype,Level I,Level II;",//28
-		  "O2,Screen Color,Green,White;",//28
+		  "O2,Screen Color,White,Green;",//28
 		  "O3,Diag,Off,On(needs Reset);",//28
-		  "O4,Scanlines,Off,On;",//20
-        "T5,Reset;",//9
-		  "V,v0.3;"//7
+		  "O56,Scanlines,None,25%,50%,75%;",//31
+        "T4,Reset;",//9
+		  "V,v0.4;"//7
 };
 
-parameter CONF_STR_LEN = 12+28+28+28+20+9+7    -28;  
+parameter CONF_STR_LEN = 12+28+28+28+31+9+7    -28;  
 
 
 user_io #(.STRLEN(CONF_STR_LEN)) user_io ( 
@@ -50,7 +51,8 @@ user_io #(.STRLEN(CONF_STR_LEN)) user_io (
       .SPI_MOSI       ( SPI_DI         ),
 		.buttons        ( buttons        ),
 		.switches   	 ( switches			),
-//		.scandoubler_disable(scandoubler_disable),
+		.scandoubler_disable(scandoubler_disable),
+		.ypbpr          (ypbpr           ),
       .ps2_clk        ( clk_ps2        ),
       .ps2_kbd_clk    ( ps2_kbd_clk    ),
       .ps2_kbd_data   ( ps2_kbd_data   ),
@@ -119,7 +121,7 @@ wire locked;
 	 pll pll_inst
 	(
 		.inclk0	(CLOCK_27),
-		.c0		(clk),//50Mhz
+		.c0		(clk),    //56Mhz
 		.c1		(clk_ps2),//12Khz
 		.c2		(clk_500k),//500Khz
 		.locked	(locked)
@@ -127,7 +129,7 @@ wire locked;
 
 	
 reg       reset = 1;
-wire      RESET = status[0] | status[5];// | buttons[1];//Uses for Tape loading
+wire      RESET = status[0] | status[4];// | buttons[1];//Uses for Tape loading
 always @(posedge clk) begin
 	integer   initRESET = 100000000;
 	reg [3:0] reset_cnt;
@@ -145,57 +147,88 @@ end
 ////////////////////////////////////////////////////////////////////
 // Top level module													     		//
 ////////////////////////////////////////////////////////////////////
-wire  [5:0] R_out;
-wire  [5:0] G_out;
-wire  [5:0] B_out;
-wire        HSync, VSync;
+wire pix;
+wire HSync, VSync;
 wire audioDat;
 
-    pet2001_top pet_top(
-			.vgaRed(R_out),
-			.vgaGreen(G_out),
-			.vgaBlue(B_out),
-			.Hsync(HSync),
-			.Vsync(VSync),
-			.keyrow(keyrow),
-			.keyin(keyin),	
-			.cass_motor_n(),
-			.cass_write(),
-			.cass_sense_n(),
-			.cass_read(tape_data),
-			.tape_data(),
-			.audio(audioDat),
-			.diag_l(!status[3]),        
-			.clk_speed(),
-			.clk_stop(),
-			.video_green(!status[2]),
-			.clk(clk),
-			.reset(reset)
-		);
-		
+reg  ce_14mp;
+reg  ce_7mp;
+reg  ce_7mn;
+reg  ce_1m;
 
-////////////////////////////////////////////////////////////////////
-// OSD 																			   //
-////////////////////////////////////////////////////////////////////			
-osd #(10'd0,10'd0,3'd7) osd
+always @(negedge clk) begin
+	reg  [3:0] div = 0;
+	reg  [5:0] cpu_div = 0;
+
+	div <= div + 1'd1;
+	ce_14mp <= !div[1] & !div[0];
+	ce_7mp  <= !div[2] & !div[1:0];
+	ce_7mn  <=  div[2] & !div[1:0];
+	
+	cpu_div <= cpu_div + 1'd1;
+	if(cpu_div == 55) cpu_div <= 0;
+	ce_1m <= !cpu_div;
+end
+
+pet2001_top pet_top
 (
-	.red_in(R_out),
-	.green_in(G_out),
-	.blue_in(B_out),
-	.hs_in(HSync),
-	.vs_in(VSync),
-	.red_out(VGA_R),
-	.green_out(VGA_G),
-	.blue_out(VGA_B),
-	.hs_out(VGA_HS),
-	.vs_out(VGA_VS),
-	.pclk(CLOCK_27),
-	.sck(SPI_SCK),
-	.ss(SPI_SS3),
-	.sdi(SPI_DI),
-	.scanline_ena_h(status[4])
+	.pix(pix),
+	.HSync(HSync),
+	.VSync(VSync),
+	.keyrow(keyrow),
+	.keyin(keyin),	
+	.cass_motor_n(),
+	.cass_write(),
+	.cass_sense_n(),
+	.cass_read(tape_data),
+	.tape_data(),
+	.audio(audioDat),
+	.diag_l(!status[3]),        
+	.clk_speed(0),
+	.clk_stop(0),
+	.clk(clk),
+	.ce_7mp(ce_7mp),
+	.ce_7mn(ce_7mn),
+	.ce_1m(ce_1m),
+	.reset(reset)
 );
 
+////////////////////////////////////////////////////////////////////
+// Video 																			   //
+////////////////////////////////////////////////////////////////////			
+
+wire [7:0] G = {pix,pix,pix,pix,pix,pix,pix,pix};
+wire [7:0] R = status[2] ? 8'd0 : G;
+wire [7:0] B = R;
+
+video_mixer #(10'd0, 10'd0, 3'd4) video_mixer
+(
+	.clk_sys(clk),
+	.ce_x2(ce_14mp),
+	.ce_x1(ce_7mp),
+
+	.SPI_SCK(SPI_SCK),
+	.SPI_SS3(SPI_SS3),
+	.SPI_DI(SPI_DI),
+
+	.scanlines(status[6:5]),
+	.scandoubler_disable(scandoubler_disable),
+	.ypbpr(ypbpr),
+	.ypbpr_full(1),
+
+	.R(R),
+	.G(G),
+	.B(B),
+
+	.HSync(HSync),
+	.VSync(VSync),
+
+	.VGA_R(VGA_R),
+	.VGA_G(VGA_G),
+	.VGA_B(VGA_B),
+	.VGA_VS(VGA_VS),
+	.VGA_HS(VGA_HS)
+);
 
 ////////////////////////////////////////////////////////////////////
 // Audio 																			//
@@ -265,14 +298,15 @@ tape tape (
 wire [7:0] 	keyin;
 wire [3:0] 	keyrow;	 
 
-    pet2001ps2_key ps2key(
-			  .keyin(keyin),
-			  .keyrow(keyrow),			  
-			  .ps2_clk(ps2_kbd_clk),
-			  .ps2_data(ps2_kbd_data),
-			  .clk(clk),
-			  .reset(reset)
-		  );
+pet2001ps2_key ps2key
+(
+	.keyin(keyin),
+	.keyrow(keyrow),			  
+	.ps2_clk(ps2_kbd_clk),
+	.ps2_data(ps2_kbd_data),
+	.clk(clk),
+	.reset(reset)
+);
 
     
 endmodule // pet2001

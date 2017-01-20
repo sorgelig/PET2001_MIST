@@ -39,87 +39,92 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 					
-module pet2001_top(
-		   output [5:0] vgaRed,
-                   output [5:0] vgaGreen,
-                   output [5:0] vgaBlue,
-                   output 	Hsync,
-                   output 	Vsync,
+module pet2001_top
+(
+	output       pix,
+	output       HSync,
+	output       VSync,
 
-						output [3:0] keyrow,
-						input [7:0] 	keyin,
+	output [3:0] keyrow,
+	input  [7:0] keyin,
 
-                   output 	cass_motor_n,
-                   output 	cass_write,
-                   output 	audio,
-                   input 	cass_sense_n,
-                   input 	cass_read,
-						 input   tape_data,
-                   input 	diag_l, 
-                   input 	clk_speed,
-                   input 	clk_stop,
-						 input 	video_green,
-                   input 	clk,
-                   input 	reset
-	   );
+	output   cass_motor_n,
+	output   cass_write,
+	output   audio,
+	input    cass_sense_n,
+	input    cass_read,
+	input    tape_data,
+	input    diag_l, 
+	input    clk_speed,
+	input    clk_stop,
+	input    clk,
+	input    ce_7mp,
+	input    ce_7mn,
+	input    ce_1m,
+	input    reset
+);
 
-   ///////////////////////////////////////////////////
-   // CPU
-   ///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+// CPU
+///////////////////////////////////////////////////
    
-    wire [15:0] 	addr;
-    wire [7:0] 		cpu_data_out;
-    wire [7:0] 		cpu_data_in;
-    wire 		we;
+wire [15:0] 	addr;
+wire [7:0] 		cpu_data_out;
+wire [7:0] 		cpu_data_in;
 
-    wire 		rdy;
-    wire 		nmi;
-    wire 		irq;
+wire 		we;
+wire 		rdy;
+wire 		nmi;
+wire 		irq;
 
-    cpu6502 cpu(.addr(addr),
-		.data_out(cpu_data_out),
-		.we(we),
-		.data_in(cpu_data_in),
-		.rdy(rdy),
-		.nmi(nmi),
-		.irq(irq),
-		.clk(clk),
-		.reset(reset)
-	);
+cpu6502 cpu
+(
+	.addr(addr),
+	.data_out(cpu_data_out),
+	.we(we),
+	.data_in(cpu_data_in),
+	.rdy(rdy),
+	.nmi(nmi),
+	.irq(irq),
+	.clk(clk),
+	.reset(reset)
+);
 
-    ///////////////////////////////////////////////////
-    // Commodore Pet hardware
-    ///////////////////////////////////////////////////
-    pet2001hw hw(.addr(addr),
-                 .data_out(cpu_data_in),
-                 .data_in(cpu_data_out),
-                 .we(we),
-                 .rdy(rdy),
-                 .nmi(nmi),
-                 .irq(irq),
-	
-                 .vga_r(vgaRed),
-                 .vga_g(vgaGreen),
-                 .vga_b(vgaBlue),
-                 .vga_hsync(Hsync),
-                 .vga_vsync(Vsync),
+///////////////////////////////////////////////////
+// Commodore Pet hardware
+///////////////////////////////////////////////////
+pet2001hw hw
+(
+	.addr(addr),
+	.data_out(cpu_data_in),
+	.data_in(cpu_data_out),
+	.we(we),
+	.rdy(rdy),
+	.nmi(nmi),
+	.irq(irq),
 
-		 .keyin(keyin),
-		 .keyrow(keyrow),
-		 
-                 .cass_motor_n(cass_motor_n),
-                 .cass_write(cass_write),
-                 .audio(audio),
-                 .cass_sense_n(cass_sense_n),
-                 .cass_read(cass_read),
-					  .tape_data(tape_data),
-                 .diag_l(diag_l),
+	.pix(pix),
+	.HSync(HSync),
+	.VSync(VSync),
 
-                 .clk_speed(clk_speed),
-                 .clk_stop(clk_stop),
-					  .video_green(video_green),
-                 .clk(clk),
-                 .reset(reset)
-	 );
+	.keyin(keyin),
+	.keyrow(keyrow),
+
+	.cass_motor_n(cass_motor_n),
+	.cass_write(cass_write),
+	.audio(audio),
+	.cass_sense_n(cass_sense_n),
+	.cass_read(cass_read),
+	.tape_data(tape_data),
+	.diag_l(diag_l),
+
+	.clk_speed(clk_speed),
+	.clk_stop(clk_stop),
+	.ce_7mp(ce_7mp),
+	.ce_7mn(ce_7mn),
+	.ce_1m(ce_1m),
+	.clk(clk),
+	.reset(reset)
+);
 
 endmodule // pet2001_top
