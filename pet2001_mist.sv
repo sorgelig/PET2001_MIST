@@ -3,21 +3,33 @@
 
 module pet2001_mist
 (	
-	output       LED,						
-	output [5:0] VGA_R,
-	output [5:0] VGA_G,
-	output [5:0] VGA_B,
-	output       VGA_HS,
-	output       VGA_VS,
-	output       AUDIO_L,
-	output       AUDIO_R,	
-	input        SPI_SCK,
-	output       SPI_DO,
-	input        SPI_DI,
-	input        SPI_SS2,
-	input        SPI_SS3,
-	input        CONF_DATA0,
-	input        CLOCK_27
+	output        LED,						
+	output  [5:0] VGA_R,
+	output  [5:0] VGA_G,
+	output  [5:0] VGA_B,
+	output        VGA_HS,
+	output        VGA_VS,
+	output        AUDIO_L,
+	output        AUDIO_R,	
+	input         SPI_SCK,
+	output        SPI_DO,
+	input         SPI_DI,
+	input         SPI_SS2,
+	input         SPI_SS3,
+	input         CONF_DATA0,
+	input         CLOCK_27,
+
+   output [12:0] SDRAM_A,
+   inout  [15:0] SDRAM_DQ,
+   output        SDRAM_DQML,
+   output        SDRAM_DQMH,
+   output        SDRAM_nWE,
+   output        SDRAM_nCAS,
+   output        SDRAM_nRAS,
+   output        SDRAM_nCS,
+   output  [1:0] SDRAM_BA,
+   output        SDRAM_CLK,
+   output        SDRAM_CKE
 );
 
 //////////////////////////////////////////////////////////////////////
@@ -32,13 +44,13 @@ wire        ps2_kbd_clk, ps2_kbd_data;
 
 localparam CONF_STR = 
 {
-		  "PET2001;TAP;",
-//		  "O1,Romtype,Level I,Level II;",
-		  "O2,Screen Color,White,Green;",
-		  "O3,Diag,Off,On(needs Reset);",
-		  "O56,Scanlines,None,25%,50%,75%;",
-        "T4,Reset;",
-		  "V,v0.4;"
+	"PET2001;TAP;",
+// "O1,Romtype,Level I,Level II;",
+	"O2,Screen Color,White,Green;",
+	"O3,Diag,Off,On(needs Reset);",
+	"O56,Scanlines,None,25%,50%,75%;",
+	"T4,Reset;",
+	"V,v0.5;"
 };
 
 
@@ -66,11 +78,12 @@ user_io #(.STRLEN(($size(CONF_STR)>>3))) user_io
 wire clk;
 wire locked;
 
-pll pll_inst
+pll pll
 (
-	.inclk0	(CLOCK_27),
-	.c0		(clk),     //56Mhz
-	.locked	(locked)
+	.inclk0(CLOCK_27),
+	.c0(clk),          //112Mhz
+	.c1(SDRAM_CLK),    //112Mhz
+	.locked(locked)
 );
 
 reg       reset = 1;
@@ -99,23 +112,47 @@ reg  ce_1m;
 reg  ce_500k;
 
 always @(negedge clk) begin
-	reg  [3:0] div = 0;
-	reg  [5:0] cpu_div = 0;
-	reg  [6:0] tape_div = 0;
+	reg  [4:0] div = 0;
+	reg  [6:0] cpu_div = 0;
+	reg  [7:0] tape_div = 0;
 
 	div <= div + 1'd1;
-	ce_14mp <= !div[1] & !div[0];
-	ce_7mp  <= !div[2] & !div[1:0];
-	ce_7mn  <=  div[2] & !div[1:0];
+	ce_14mp <= !div[2] & !div[1:0];
+	ce_7mp  <= !div[3] & !div[2:0];
+	ce_7mn  <=  div[3] & !div[2:0];
 	
 	cpu_div <= cpu_div + 1'd1;
-	if(cpu_div == 55) cpu_div <= 0;
+	if(cpu_div == 111) cpu_div <= 0;
 	ce_1m <= !cpu_div;
 
 	tape_div <= tape_div + 1'd1;
-	if(tape_div == 111) tape_div <= 0;
+	if(tape_div == 223) tape_div <= 0;
 	ce_500k <= !tape_div;
 end
+
+///////////////////////////////////////////////////
+// SDRAM
+///////////////////////////////////////////////////
+
+reg  [24:0] ram_addr = 0;
+reg   [7:0] ram_din = 0;
+wire        ram_we = 0;
+wire        ram_rd = 0;
+wire  [7:0] ram_dout;
+wire        ram_ready;
+
+sram ram
+(
+	.*,
+	.init(~locked),
+	.dout(ram_dout),
+	.din (ram_din),
+	.addr(ram_addr),
+	.wtbt(0),
+	.we(ram_we),
+	.rd(ram_rd),
+	.ready(ram_ready)
+);
 
 
 ///////////////////////////////////////////////////

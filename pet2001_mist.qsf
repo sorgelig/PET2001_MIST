@@ -313,6 +313,7 @@ set_global_assignment -name VERILOG_FILE data_io.v
 set_global_assignment -name VERILOG_FILE data_io_ram.v
 set_global_assignment -name VERILOG_FILE tape.v
 set_global_assignment -name VERILOG_FILE sigma_delta_dac.v
+set_global_assignment -name SYSTEMVERILOG_FILE sram.sv
 set_global_assignment -name VERILOG_FILE cpu6502.v
 set_global_assignment -name VERILOG_FILE via6522.v
 set_global_assignment -name VERILOG_FILE pia6520.v
