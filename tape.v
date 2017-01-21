@@ -25,15 +25,17 @@ module tape(
    input       ss,
    input  		sdi,
 	
-	input			clk,      // 500kHz
+	input			clk,
+	input			ce_500k,
 	input 		play,     // "press play on tape"
 	output reg	tape_out
 );
 
 // create clock to be used for signaltap
 reg [7:0] tape_clk /* synthesis noprune */;
-always @(posedge clk) 	
-	tape_clk <= tape_clk + 8'd1;
+always @(posedge clk) begin 	
+	if(ce_500k) tape_clk <= tape_clk + 8'd1;
+end
 
 // tape bit timing
 // 0 bit = /\/\/\/\_________   (4* 150us H + 150us L + 1300us L)
@@ -50,43 +52,45 @@ reg bit_done;
 
 // generate bit timing
 always @(posedge clk) begin
-	bit_done <= 1'b0;
+	if(ce_500k) begin
+		bit_done <= 1'b0;
 
-	if(pulse_cnt == 0) begin
-		// end of idle state, start new bit
-		if(pulse_state == 0) begin
-			if(bit_start) begin
-				tape_out <= 1'b1;
-				pulse_state <= bit?5'd19:5'd9;
+		if(pulse_cnt == 0) begin
+			// end of idle state, start new bit
+			if(pulse_state == 0) begin
+				if(bit_start) begin
+					tape_out <= 1'b1;
+					pulse_state <= tx_bit?5'd19:5'd9;
+					pulse_cnt <= 10'd74;
+				end
+			end
+				
+			// end of 1300us seperator phase
+			else if(pulse_state == 1) begin
+				tape_out <= 1'b0;
+				pulse_state <= 5'd0;
+				pulse_cnt <= 10'd0;
+				bit_done <= 1'b1;
+			end
+				
+			// end of last high phase
+			else if(pulse_state == 2) begin
+				tape_out <= 1'b0;
+				pulse_state <= 5'd1;
+				pulse_cnt <= 10'd649;
+			end
+			
+			// end of normal pulse hi/lo phase
+			else if(pulse_state > 2) begin
+				// tape level is 1 when coming from state 4,6,8,...
+				tape_out <= !pulse_state[0];
+				pulse_state <= pulse_state - 5'd1;
 				pulse_cnt <= 10'd74;
 			end
-		end
-			
-		// end of 1300us seperator phase
-		else if(pulse_state == 1) begin
-			tape_out <= 1'b0;
-			pulse_state <= 5'd0;
-			pulse_cnt <= 10'd0;
-			bit_done <= 1'b1;
-		end
-			
-		// end of last high phase
-		else if(pulse_state == 2) begin
-			tape_out <= 1'b0;
-			pulse_state <= 5'd1;
-			pulse_cnt <= 10'd649;
-		end
 		
-		// end of normal pulse hi/lo phase
-		else if(pulse_state > 2) begin
-			// tape level is 1 when coming from state 4,6,8,...
-			tape_out <= !pulse_state[0];
-			pulse_state <= pulse_state - 5'd1;
-			pulse_cnt <= 10'd74;
-		end
-	
-	end else
-		pulse_cnt <= pulse_cnt - 10'd1;
+		end else
+			pulse_cnt <= pulse_cnt - 10'd1;
+	end
 end
 
 // bring play signal into local clock domain and 
@@ -94,16 +98,18 @@ end
 reg start;
 reg playD, playD2;
 always @(posedge clk) begin
-	start <= 1'b0;
-	playD <= play;
-	playD2 <= playD;
+	if(ce_500k) begin
+		start <= 1'b0;
+		playD <= play;
+		playD2 <= playD;
 
-	if(playD && !playD2)
-		start <= 1'b1;
+		if(playD && !playD2)
+			start <= 1'b1;
+	end
 end
 
 // byte transmitter
-wire bit = byte[bit_cnt];
+wire tx_bit = tx_byte[bit_cnt];
 
 // reg [7:0] byte = 8'h55 /* synthesis noprune */;
 reg [2:0] bit_cnt;
@@ -114,33 +120,35 @@ reg bit_start;
 reg byte_done;
 
 always @(posedge clk) begin
-	bit_start <= 1'b0;
-	byte_done <= 1'b0;
+	if(ce_500k) begin
+		bit_start <= 1'b0;
+		byte_done <= 1'b0;
 
-	// start signal starts a new byte transmission
-	if(!byte_tx_running) begin
-		if(byte_start) begin
-			byte_tx_running <= 1'b1;
-			bit_in_progress <= 1'b0;
-			bit_cnt <= 3'd7;
-		end
-	end else begin
-		// byte transmission in progress
-		
-		if(!bit_in_progress) begin
-			// start new bit
-			bit_start <= 1'b1;
-			bit_in_progress <= 1'b1;
-		end else begin
-			// wait for bit transmission to finish
-			if(bit_done) begin
+		// start signal starts a new byte transmission
+		if(!byte_tx_running) begin
+			if(byte_start) begin
+				byte_tx_running <= 1'b1;
 				bit_in_progress <= 1'b0;
-				
-				if(bit_cnt != 0)
-					bit_cnt <= bit_cnt - 3'd1;
-				else begin
-					byte_tx_running <= 1'b0;
-					byte_done <= 1'b1;
+				bit_cnt <= 3'd7;
+			end
+		end else begin
+			// byte transmission in progress
+			
+			if(!bit_in_progress) begin
+				// start new bit
+				bit_start <= 1'b1;
+				bit_in_progress <= 1'b1;
+			end else begin
+				// wait for bit transmission to finish
+				if(bit_done) begin
+					bit_in_progress <= 1'b0;
+					
+					if(bit_cnt != 0)
+						bit_cnt <= bit_cnt - 3'd1;
+					else begin
+						byte_tx_running <= 1'b0;
+						byte_done <= 1'b1;
+					end
 				end
 			end
 		end
@@ -157,37 +165,39 @@ reg byte_start;
 
 
 always @(posedge clk) begin
-	byte_start <= 1'b0;
+	if(ce_500k) begin
+		byte_start <= 1'b0;
 
-	if(byte_state == 0) begin
-		// start transmission if user presses "play". don't do anything if
-		// there's no tape data in the buffer
-		if(start && (file_size != 0)) begin
-			byte_state <= 2'd1;
-			
-			// transmit the "file name"
-			byte_start <= 1'b1;
-		end
-	end else if(byte_state == 1) begin
-		if(byte_done) begin
-			byte_state <= 2'd2;
-			byte_start <= 1'b1;
-			byte_count <= 16'h0000;
-		end
-	
-	end else if(byte_state == 2) begin
-		if(byte_done) begin
-			if(byte_count != file_size - 16'd1) begin
-				byte_count <= byte_count + 16'd1;
+		if(byte_state == 0) begin
+			// start transmission if user presses "play". don't do anything if
+			// there's no tape data in the buffer
+			if(start && (file_size != 0)) begin
+				byte_state <= 2'd1;
+
+				// transmit the "file name"
 				byte_start <= 1'b1;
-			end else
-				byte_state <= 2'd0;
+			end
+		end else if(byte_state == 1) begin
+			if(byte_done) begin
+				byte_state <= 2'd2;
+				byte_start <= 1'b1;
+				byte_count <= 16'h0000;
+			end
+
+		end else if(byte_state == 2) begin
+			if(byte_done) begin
+				if(byte_count != file_size - 16'd1) begin
+					byte_count <= byte_count + 16'd1;
+					byte_start <= 1'b1;
+				end else
+					byte_state <= 2'd0;
+			end
 		end
 	end
 end
 
 wire [7:0] filename = { 1'b1, 7'h3f}; // 'Z' with end flag
-wire [7:0] byte = (byte_state == 1)?filename:ram_data_out;
+wire [7:0] tx_byte = (byte_state == 1)?filename:ram_data_out;
 wire [7:0] ram_data_out;
 
 wire [15:0] file_size; 
@@ -203,9 +213,7 @@ data_io data_io (
 
 	// ram interface
 	.clk				( clk						),
-	.we				( 1'b0					),
 	.a					( byte_count[13:0] 	),
-	.din				( 8'h00					),
 	.dout				( ram_data_out			)
 );
 

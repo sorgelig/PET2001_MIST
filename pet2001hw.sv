@@ -113,8 +113,7 @@ wire [7:0]	rom_data;
 wire [10:0] charaddr;
 wire [7:0] 	chardata;
 
-	  
-pet2001_rom rom
+pet2001rom rom
 (
 	.q_a(rom_data),
 	.q_b(chardata),
@@ -132,7 +131,7 @@ wire [7:0] 	vram_data;
 wire [7:0] 	video_data;
 wire [10:0] video_addr;
 
-wire	ram_we = we && (addr[15:14] == 2'b00);
+wire	ram_we  = we && (addr[15:14] == 2'b00);
 wire	vram_we = we && (addr[15:11] == 5'b1000_0);
 
 pet2001ram ram
@@ -144,15 +143,19 @@ pet2001ram ram
 	.clock(clk)
 );
 
-pet2001vidram vidram
+pet2001vram vidram
 (
-	.data_out(vram_data),
-	.data_in(data_in),
-	.cpu_addr(addr[10:0]),
-	.we(vram_we),
-	.video_addr(video_addr),
-	.video_data(video_data),
-	.clk(clk)
+	.clock(clk),
+
+	.address_a(addr[10:0]),
+	.data_a(data_in),
+	.wren_a(vram_we),
+	.q_a(vram_data),
+
+	.address_b(video_addr),
+	.data_b(0),
+	.wren_b(0),
+	.q_b(video_data)
 );
 
 //////////////////////////////////////
@@ -163,23 +166,7 @@ wire	video_on;    // signal indicating VGA is scanning visible
 wire 	video_blank; // blank screen during scrolling
 wire	video_gfx;	 // display graphic characters vs. lower-case
  
-pet2001video vid
-(
-	.pix(pix),
-	.HSync(HSync),
-	.VSync(VSync),
-	.video_addr(video_addr),
-	.video_data(video_data),        
-	.charaddr(charaddr),
-	.chardata(chardata),
-	.video_on(video_on),
-	.video_blank(video_blank),
-	.video_gfx(video_gfx),
-	.clk(clk),
-	.ce_7mp(ce_7mp),
-	.ce_7mn(ce_7mn),
-	.reset(reset)
-);
+pet2001video vid(.*);
  
 ////////////////////////////////////////////////////////
 // I/O hardware
@@ -189,27 +176,12 @@ wire 	io_we = we && (addr[15:11] == 5'b1110_1);
 
 pet2001io io
 (
+	.*,
 	.data_out(io_read_data),
 	.data_in(data_in),
 	.addr(addr[10:0]),
-	.rdy(rdy),
 	.we(io_we),
-	.irq(irq),
-	.keyrow(keyrow),
-	.keyin(keyin),		 
-	.video_sync(video_on),
-	.video_blank(video_blank),
-	.video_gfx(video_gfx),
-	.cass_motor_n(cass_motor_n),
-	.cass_write(cass_write),
-	.audio(audio),
-	.cass_sense_n(cass_sense_n),
-	.cass_read(cass_read),
-	.tape_data(tape_data),
-	.diag_l(diag_l),	
-	.slow_clock(slow_clock),        
-	.clk(clk),
-	.reset(reset)
+	.video_sync(video_on)
 );
 
 /////////////////////////////////////
@@ -217,9 +189,13 @@ pet2001io io
 /////////////////////////////////////
 always @(*)
 casex(addr[15:11])
-	5'b1110_1:                 // E800
+	5'b1111_x:                 // F000-FFFF
+		data_out = rom_data;
+	5'b1110_1:                 // E800-EFFF
 		data_out = io_read_data;
-	5'b11xx_x:                 // C000-FFFF
+	5'b1110_0:                 // E000-E7FF
+		data_out = rom_data;
+	5'b110x_x:                 // C000-DFFF
 		data_out = rom_data;
 	5'b1000_0:                 // 8000-87FF
 		data_out = vram_data;

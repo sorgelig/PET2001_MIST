@@ -46,9 +46,11 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
+*.bak
 *.qws
 db
 output
+output_files
 greybox_tmp
 incremental_db
 simulation

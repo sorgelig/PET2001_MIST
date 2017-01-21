@@ -30,11 +30,9 @@ module data_io (
 	output [15:0] size,          // number of bytes in input buffer
 	 
 	// cpu ram interface
-	input 			clk,
-	input          we,
-	input [13:0]   a,
-	input [8:0]    din,
-	output [8:0]   dout
+	input         clk,
+	input  [13:0] a,
+	output  [8:0] dout
 );
 
 parameter START_ADDR = 16'h0000;
@@ -103,20 +101,29 @@ always@(posedge sck, posedge ss) begin
 	end
 end
 
+reg wren = 0;
+always@(posedge clk) begin
+	reg old_rclk, old_rclk2;
+	wren <= 0;
+
+	old_rclk2 <= rclk;
+	old_rclk  <= old_rclk2;
+	if(~old_rclk & old_rclk2) wren <= 1;
+end
+
 // include the embedded dual port ram
-data_io_ram data_io_ram (
+data_io_ram data_io_ram
+(
+	.clock(clk),
+
 	// wire up cpu port
-	.address_a   	( a					),
-	.clock_a			( clk					),
-	.data_a			( din					),
-	.wren_a			( we					),
-	.q_a				( dout				),
-	
+	.rdaddress(a),
+	.q(dout),
+
 	// io controller port
-	.address_b		( addr[13:0]		),
-	.clock_b			( rclk				),
-	.data_b			( {sbuf, sdi}		),
-	.wren_b			( (cmd == UIO_FILE_TX_DAT) && !ss	)
+	.wraddress(addr[13:0]),
+	.data(data),
+	.wren(wren)
 );
 
 endmodule

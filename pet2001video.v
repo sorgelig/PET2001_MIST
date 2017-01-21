@@ -11,11 +11,9 @@ module pet2001video
 
 	output [10:0]  charaddr,	// char rom intf
 	input  [7:0]   chardata,
-	input          video_green,// green screen
 	output         video_on,	// control sigs
 	input          video_blank,
 	input          video_gfx,
-	input          reset,
 	input          clk,
 	input          ce_7mp,
 	input          ce_7mn
