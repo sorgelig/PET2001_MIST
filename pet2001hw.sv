@@ -80,10 +80,8 @@ assign   nmi = 0;    // unused for now
 reg 	slow_clock;
  
 always @(posedge clk) begin
-	if (reset)
-		slow_clock <= 0;
-	else
-		slow_clock <= (clk_speed || ce_1m) && !clk_stop;
+	if (reset) slow_clock <= 0;
+	else slow_clock <= (clk_speed || ce_1m) && !clk_stop;
 end
 
 ///////////////////////////////////////////////////////////////
@@ -96,10 +94,8 @@ wire 	needs_cycle = (addr[15:11] == 5'b1110_1);
 assign rdy = rdy_r || (clk_speed && !needs_cycle);
 	 
 always @(posedge clk) begin
-	if (reset)
-		rdy_r <= 0;
-	else
-		rdy_r <= slow_clock && ! rdy;
+	if (reset) rdy_r <= 0;
+	else rdy_r <= slow_clock && ! rdy;
 end
  
 /////////////////////////////////////////////////////////////
