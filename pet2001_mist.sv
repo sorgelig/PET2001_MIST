@@ -173,15 +173,20 @@ wire [7:0] 	cpu_data_out;
 wire [7:0] 	cpu_data_in;
 
 wire we;
-wire rdy;
 wire nmi;
 wire irq;
 
 cpu6502 cpu
 (
-	.*,
-	.data_out(cpu_data_out),
-	.data_in(cpu_data_in)
+	.clk(clk),
+	.ce(ce_1m),
+	.reset(reset),
+	.nmi(nmi),
+	.irq(irq),
+	.din(cpu_data_in),
+	.dout(cpu_data_out),
+	.addr(addr),
+	.we(we)
 );
 
 

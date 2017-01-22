@@ -49,9 +49,8 @@
 module pet2001io
 (
 	output reg [7:0] data_out, 	// CPU interface
-	input [7:0]  data_in,
+	input  [7:0] data_in,
 	input [10:0] addr,
-	input        rdy,
 	input        we,
 
 	output       irq,
@@ -69,10 +68,9 @@ module pet2001io
 	input        cass_read,
 	output       audio, 		// CB2 audio
 
-	input        diag_l, 		// diag jumper input
+	input        diag_l, 	// diag jumper input
 
-	input        slow_clock, 	// for VIA timers
-
+	input        ce,
 	input        clk,
 	input        reset
 );
@@ -80,14 +78,14 @@ module pet2001io
 
 /////////////////////////// 6520 PIA1 ////////////////////////////////////
 //
-wire       pia1_strobe = rdy && (addr[10:2] == 9'b000_0001_00);
+wire       pia1_strobe = ce && (addr[10:2] == 9'b000_0001_00);
 wire [7:0] pia1_data_out;
 wire       pia1_irq;
 wire [7:0] pia1_porta_out;
 wire [7:0] pia1_porta_in = {diag_l, 2'b00, cass_sense_n, 4'b0000};
 wire       pia1_ca1_in = !cass_read;
 wire       pia1_ca2_out;
- 
+
 pia6520 pia1
 (
 	.data_out(pia1_data_out),
@@ -116,10 +114,11 @@ pia6520 pia1
  
 assign video_blank = !pia1_ca2_out;
 assign keyrow = pia1_porta_out[3:0];
+
  
 ////////////////////////// 6520 PIA2 ////////////////////////////////////
 // (does nothing for now)
-wire       pia2_strobe = rdy && (addr[10:2] == 9'b000_0010_00);
+wire       pia2_strobe = ce && (addr[10:2] == 9'b000_0010_00);
 wire [7:0] pia2_data_out;
 wire       pia2_irq;
 
@@ -149,9 +148,10 @@ pia6520 pia2
 	.reset(reset)
 );
 
+
 /////////////////////////// 6522 VIA ////////////////////////////////////
 //
-wire	     via_strobe = rdy && (addr[10:4] == 7'b000_0100);
+wire	     via_strobe = ce && (addr[10:4] == 7'b000_0100);
 wire [7:0] via_data_out;
 wire       via_irq;
 wire [7:0] via_portb_out;
@@ -180,13 +180,14 @@ via6522 via
 	.cb2_out(audio),
 	.cb2_in(1'b0),
 
-	.slow_clock(slow_clock),
+	.ce(ce),
 
 	.clk(clk),
 	.reset(reset)
 );
 
 assign cass_write = via_portb_out[3];
+
 
 /////////////// Read data mux /////////////////////////
 // register I/O stuff, therefore RDY must be delayed a cycle!

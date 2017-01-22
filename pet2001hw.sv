@@ -44,7 +44,6 @@ module pet2001hw
 	input [7:0]      data_in,
 	output reg [7:0] data_out,
 	input            we,
-	output           rdy,
 	output           nmi,
 	output           irq,
 
@@ -73,31 +72,6 @@ module pet2001hw
 
 assign   nmi = 0;    // unused for now
 
-////////////////////////////////////////////////////////////////
-// Asserting clk_speed will let everything go at full speed.
-// Asserting clk_stop will suspend it.
-///////////////////////////////////////////////////////////////
-reg 	slow_clock;
- 
-always @(posedge clk) begin
-	if (reset) slow_clock <= 0;
-	else slow_clock <= (clk_speed || ce_1m) && !clk_stop;
-end
-
-///////////////////////////////////////////////////////////////
-// rdy logic: A wait state is needed for video RAM and I/O.  rdy is also
-// held back until slow_clock pulse if clk_speed isn't asserted.
-///////////////////////////////////////////////////////////////
-reg 	rdy_r;
-wire 	needs_cycle = (addr[15:11] == 5'b1110_1);
-
-assign rdy = rdy_r || (clk_speed && !needs_cycle);
-	 
-always @(posedge clk) begin
-	if (reset) rdy_r <= 0;
-	else rdy_r <= slow_clock && ! rdy;
-end
- 
 /////////////////////////////////////////////////////////////
 // Pet ROMS incuding character ROM.  Character data is read
 // out second port.  This brings total ROM to 16K which is
@@ -169,9 +143,14 @@ pet2001video vid(.*);
 wire [7:0] 	io_read_data;
 wire 	io_we = we && (addr[15:11] == 5'b1110_1);
 
+//delay ce for io for stability.
+reg [1:0] ce_io;
+always @(negedge clk) ce_io <= {ce_io[0],ce_1m};
+
 pet2001io io
 (
 	.*,
+	.ce(ce_io[1]),
 	.data_out(io_read_data),
 	.data_in(data_in),
 	.addr(addr[10:0]),
