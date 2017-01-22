@@ -140,7 +140,7 @@ always @(negedge clk) begin
 	cpu_div <= cpu_div + 1'd1;
 	if(cpu_div == cpu_rate) begin
 		cpu_div  <= 0;
-		cpu_rate <= (tape_active && !status[7]) ? 7'd20 : 7'd111;
+		cpu_rate <= (tape_active && !status[7]) ? 7'd30 : 7'd111;
 	end
 	ce_1m <= !cpu_div;
 end
