@@ -308,9 +308,7 @@ set_global_assignment -name SYSTEMVERILOG_FILE keyboard.sv
 set_global_assignment -name SYSTEMVERILOG_FILE video_mixer.sv
 set_global_assignment -name VERILOG_FILE scandoubler.v
 set_global_assignment -name VERILOG_FILE osd.v
-set_global_assignment -name VERILOG_FILE user_io.v
-set_global_assignment -name VERILOG_FILE data_io.v
-set_global_assignment -name VERILOG_FILE data_io_ram.v
+set_global_assignment -name VERILOG_FILE mist_io.v
 set_global_assignment -name VERILOG_FILE tape.v
 set_global_assignment -name VERILOG_FILE sigma_delta_dac.v
 set_global_assignment -name SYSTEMVERILOG_FILE sram.sv

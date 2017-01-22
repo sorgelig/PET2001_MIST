@@ -1,7 +1,7 @@
 //
-// user_io.v
+// mist_io.v
 //
-// user_io for the MiST board
+// mist_io for the MiST board
 // http://code.google.com/p/mist-board/
 //
 // Copyright (c) 2014 Till Harbaum <till@harbaum.org>
@@ -30,7 +30,7 @@
 // clk_ps2 = clk_sys/(PS2DIV*2)
 //
 
-module user_io #(parameter STRLEN=0, parameter PS2DIV=100)
+module mist_io #(parameter STRLEN=0, parameter PS2DIV=100)
 (
 
 	// parameter STRLEN and the actual length of conf_str have to match
@@ -56,12 +56,13 @@ module user_io #(parameter STRLEN=0, parameter PS2DIV=100)
 	output            scandoubler_disable,
 	output            ypbpr,
 
-	output reg [7:0]  status,
+	output reg [31:0] status,
 
 	// SD config
 	input             sd_conf,
 	input             sd_sdhc,
-	output            sd_mounted,
+	output            img_mounted, // signaling that new image has been mounted
+	output reg [31:0] img_size,    // size of image in bytes
 
 	// SD block level access
 	input      [31:0] sd_lba,
@@ -81,19 +82,25 @@ module user_io #(parameter STRLEN=0, parameter PS2DIV=100)
 	output reg        ps2_kbd_data,
 	output            ps2_mouse_clk,
 	output reg        ps2_mouse_data,
-	input             ps2_caps_led
+
+	// ARM -> FPGA download
+	output reg        ioctl_download = 0, // signal indicating an active download
+	output reg  [7:0] ioctl_index,        // menu index used to upload the file
+	output reg        ioctl_wr = 0,
+	output reg [24:0] ioctl_addr,
+	output reg  [7:0] ioctl_dout
 );
 
 reg [7:0] b_data;
 reg [6:0] sbuf;
 reg [7:0] cmd;
 reg [2:0] bit_cnt;    // counts bits 0-7 0-7 ...
-reg [7:0] byte_cnt;   // counts bytes
+reg [9:0] byte_cnt;   // counts bytes
 reg [7:0] but_sw;
 reg [2:0] stick_idx;
 
 reg    mount_strobe = 0;
-assign sd_mounted   = mount_strobe;
+assign img_mounted  = mount_strobe;
 
 assign buttons = but_sw[1:0];
 assign switches = but_sw[3:2];
@@ -110,8 +117,6 @@ wire [7:0] sd_cmd = { 4'h5, sd_conf, sd_sdhc, sd_wr, sd_rd };
 
 reg spi_do;
 assign SPI_DO = CONF_DATA0 ? 1'bZ : spi_do;
-
-wire [7:0] kbd_led = { 2'b01, 4'b0000, ps2_caps_led, 1'b1};
 
 // drive MISO only when transmitting core id
 always@(negedge SPI_SCK) begin
@@ -140,10 +145,6 @@ always@(negedge SPI_SCK) begin
 				// reading sd card write data
 				8'h18:
 						spi_do <= b_data[~bit_cnt];
-
-				// reading keyboard LED status
-				8'h1f:
-						spi_do <= kbd_led[~bit_cnt];
 
 				default:
 						spi_do <= 0;
@@ -180,7 +181,7 @@ always@(posedge SPI_SCK or posedge CONF_DATA0) begin
 
 		// finished reading command byte
       if(bit_cnt == 7) begin
-			if(byte_cnt != 8'd255) byte_cnt <= byte_cnt + 8'd1;
+			if(~&byte_cnt) byte_cnt <= byte_cnt + 8'd1;
 			if(byte_cnt == 0) begin
 				cmd <= spi_dout;
 
@@ -216,7 +217,7 @@ always@(posedge SPI_SCK or posedge CONF_DATA0) begin
 							ps2_kbd_wptr <= ps2_kbd_wptr + 1'd1;
 						end
 				
-					8'h15: status <= spi_dout;
+					8'h15: status[7:0] <= spi_dout;
 				
 					// send SD config IO -> FPGA
 					// flag that download begins
@@ -250,6 +251,11 @@ always@(posedge SPI_SCK or posedge CONF_DATA0) begin
 					// notify image selection
 					8'h1c: mount_strobe <= 1;
 
+					// send image info
+					8'h1d: if(byte_cnt<5) img_size[(byte_cnt-1)<<3 +:8] <= spi_dout;
+
+					// status, 32bit version
+					8'h1e: if(byte_cnt<5) status[(byte_cnt-1)<<3 +:8] <= spi_dout;
 					default: ;
 				endcase
 			end
@@ -273,7 +279,7 @@ always @(negedge clk_sys) begin
 end
 
 // keyboard
-reg [7:0] ps2_kbd_fifo [(2**PS2_FIFO_BITS)-1:0];
+reg [7:0] ps2_kbd_fifo[1<<PS2_FIFO_BITS];
 reg [PS2_FIFO_BITS-1:0] ps2_kbd_wptr;
 reg [PS2_FIFO_BITS-1:0] ps2_kbd_rptr;
 
@@ -336,7 +342,7 @@ always@(posedge clk_sys) begin
 end
 
 // mouse
-reg [7:0] ps2_mouse_fifo [(2**PS2_FIFO_BITS)-1:0];
+reg [7:0] ps2_mouse_fifo[1<<PS2_FIFO_BITS];
 reg [PS2_FIFO_BITS-1:0] ps2_mouse_wptr;
 reg [PS2_FIFO_BITS-1:0] ps2_mouse_rptr;
 
@@ -395,6 +401,80 @@ always@(posedge clk_sys) begin
 			if(ps2_mouse_tx_state < 11) ps2_mouse_tx_state <= ps2_mouse_tx_state + 1'd1;
 				else ps2_mouse_tx_state <= 0;
 		end
+	end
+end
+
+
+///////////////////////////////   DOWNLOADING   ///////////////////////////////
+
+reg  [7:0] data_w;
+reg [24:0] addr_w;
+reg        rclk   = 0;
+
+localparam UIO_FILE_TX      = 8'h53;
+localparam UIO_FILE_TX_DAT  = 8'h54;
+localparam UIO_FILE_INDEX   = 8'h55;
+
+// data_io has its own SPI interface to the io controller
+always@(posedge SPI_SCK, posedge SPI_SS2) begin
+	reg  [6:0] sbuf;
+	reg  [7:0] cmd;
+	reg  [4:0] cnt;
+	reg [24:0] addr;
+
+	if(SPI_SS2) cnt <= 0;
+	else begin
+		rclk <= 0;
+
+		// don't shift in last bit. It is evaluated directly
+		// when writing to ram
+		if(cnt != 15) sbuf <= { sbuf[5:0], SPI_DI};
+
+		// increase target address after write
+		if(rclk) addr <= addr + 1'd1;
+
+		// count 0-7 8-15 8-15 ... 
+		if(cnt < 15) cnt <= cnt + 1'd1;
+			else cnt <= 8;
+
+		// finished command byte
+      if(cnt == 7) cmd <= {sbuf, SPI_DI};
+
+		// prepare/end transmission
+		if((cmd == UIO_FILE_TX) && (cnt == 15)) begin
+			// prepare 
+			if(SPI_DI) begin
+				addr <= 0;
+				ioctl_download <= 1; 
+			end else begin
+				addr_w <= addr;
+				ioctl_download <= 0;
+			end
+		end
+
+		// command 0x54: UIO_FILE_TX
+		if((cmd == UIO_FILE_TX_DAT) && (cnt == 15)) begin
+			addr_w <= addr;
+			data_w <= {sbuf, SPI_DI};
+			rclk <= 1;
+		end
+
+      // expose file (menu) index
+      if((cmd == UIO_FILE_INDEX) && (cnt == 15)) ioctl_index <= {sbuf, SPI_DI};
+	end
+end
+
+always@(posedge clk_sys) begin
+	reg        rclkD, rclkD2;
+
+	rclkD    <= rclk;
+	rclkD2   <= rclkD;
+	ioctl_wr <= 0;
+
+	if(rclkD & ~rclkD2) begin
+		ioctl_dout <= data_w;
+		ioctl_addr <= addr_w;
+		ioctl_wr   <= 1;
 	end
 end
 

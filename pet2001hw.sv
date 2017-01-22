@@ -59,7 +59,6 @@ module pet2001hw
 	output           cass_write,
 	input            cass_sense_n,
 	input            cass_read,
-	input            tape_data,
 	output           audio, // CB2 audio
 
 	input            clk_speed,

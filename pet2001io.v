@@ -65,7 +65,6 @@ module pet2001io(output reg [7:0] data_out, 	// CPU interface
                  output       cass_write,
                  input 	      cass_sense_n,
                  input 	      cass_read,
-                 input 		   tape_data,
                  output       audio, 		// CB2 audio
 
                  input 	      diag_l, 		// diag jumper input

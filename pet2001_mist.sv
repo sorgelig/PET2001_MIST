@@ -32,10 +32,12 @@ module pet2001_mist
    output        SDRAM_CKE
 );
 
+
 //////////////////////////////////////////////////////////////////////
-//  ARM I/O                                                         //
+//  MiST I/O                                                         //
 //////////////////////////////////////////////////////////////////////
-wire  [7:0] status;
+
+wire [31:0] status;
 wire  [1:0] buttons;
 wire  [1:0] switches;
 wire        scandoubler_disable;
@@ -46,6 +48,7 @@ localparam CONF_STR =
 {
 	"PET2001;TAP;",
 // "O1,Romtype,Level I,Level II;",
+   "O7,Fast TAP loading,On,Off;",
 	"O2,Screen Color,White,Green;",
 	"O3,Diag,Off,On(needs Reset);",
 	"O56,Scanlines,None,25%,50%,75%;",
@@ -53,8 +56,13 @@ localparam CONF_STR =
 	"V,v0.5;"
 };
 
+wire        ioctl_download;
+wire  [7:0] ioctl_index;
+wire        ioctl_wr;
+wire [24:0] ioctl_addr;
+wire  [7:0] ioctl_dout;
 
-user_io #(.STRLEN(($size(CONF_STR)>>3))) user_io
+mist_io #(.STRLEN(($size(CONF_STR)>>3))) mist_io
 (
 	.clk_sys        (clk            ),
 	.conf_str       (CONF_STR       ),
@@ -69,12 +77,20 @@ user_io #(.STRLEN(($size(CONF_STR)>>3))) user_io
 	.ypbpr          (ypbpr          ),
 	.ps2_kbd_clk    (ps2_kbd_clk    ),
 	.ps2_kbd_data   (ps2_kbd_data   ),
-	.status         (status         )
+	.status         (status         ),
+	
+	.ioctl_download (ioctl_download ),
+	.ioctl_index    (ioctl_index    ),
+	.ioctl_wr       (ioctl_wr       ),
+	.ioctl_addr     (ioctl_addr     ),
+	.ioctl_dout     (ioctl_dout     )
 );
+
 
 //////////////////////////////////////////////////////////////////////
 // Global Clock and System Reset.                //
 //////////////////////////////////////////////////////////////////////
+
 wire clk;
 wire locked;
 
@@ -87,7 +103,7 @@ pll pll
 );
 
 reg       reset = 1;
-wire      RESET = status[0] | status[4];// | buttons[1];//Uses for Tape loading
+wire      RESET = status[0] | status[4] | buttons[1];
 always @(posedge clk) begin
 	integer   initRESET = 100000000;
 	reg [3:0] reset_cnt;
@@ -103,18 +119,18 @@ end
 
 
 ////////////////////////////////////////////////////////////////////
-// Clocks													     		//
+// Clocks
 ////////////////////////////////////////////////////////////////////
+
 reg  ce_14mp;
 reg  ce_7mp;
 reg  ce_7mn;
 reg  ce_1m;
-reg  ce_500k;
 
 always @(negedge clk) begin
 	reg  [4:0] div = 0;
 	reg  [6:0] cpu_div = 0;
-	reg  [7:0] tape_div = 0;
+	reg  [6:0] cpu_rate = 111;
 
 	div <= div + 1'd1;
 	ce_14mp <= !div[2] & !div[1:0];
@@ -122,36 +138,29 @@ always @(negedge clk) begin
 	ce_7mn  <=  div[3] & !div[2:0];
 	
 	cpu_div <= cpu_div + 1'd1;
-	if(cpu_div == 111) cpu_div <= 0;
+	if(cpu_div == cpu_rate) begin
+		cpu_div  <= 0;
+		cpu_rate <= (tape_active && !status[7]) ? 7'd20 : 7'd111;
+	end
 	ce_1m <= !cpu_div;
-
-	tape_div <= tape_div + 1'd1;
-	if(tape_div == 223) tape_div <= 0;
-	ce_500k <= !tape_div;
 end
 
-///////////////////////////////////////////////////
-// SDRAM
-///////////////////////////////////////////////////
 
-reg  [24:0] ram_addr = 0;
-reg   [7:0] ram_din = 0;
-wire        ram_we = 0;
-wire        ram_rd = 0;
-wire  [7:0] ram_dout;
-wire        ram_ready;
+///////////////////////////////////////////////////
+// RAM
+///////////////////////////////////////////////////
 
 sram ram
 (
 	.*,
 	.init(~locked),
-	.dout(ram_dout),
-	.din (ram_din),
-	.addr(ram_addr),
+	.dout(tape_data),
+	.din (ioctl_dout),
+	.addr(ioctl_download ? ioctl_addr : tape_addr),
 	.wtbt(0),
-	.we(ram_we),
-	.rd(ram_rd),
-	.ready(ram_ready)
+	.we( ioctl_download && ioctl_wr && (ioctl_index == 1)),
+	.rd(!ioctl_download && tape_rd),
+	.ready()
 );
 
 
@@ -175,6 +184,7 @@ cpu6502 cpu
 	.data_in(cpu_data_in)
 );
 
+
 ///////////////////////////////////////////////////
 // Commodore Pet hardware
 ///////////////////////////////////////////////////
@@ -190,22 +200,22 @@ pet2001hw hw
 	.data_in(cpu_data_out),
 
 	.cass_motor_n(),
-	.cass_write(),
+	.cass_write(tape_write),
 	.audio(audioDat),
-	.cass_sense_n(),
-	.cass_read(tape_data),
-	.tape_data(),
+	.cass_sense_n(0),
+	.cass_read(tape_audio),
 	.diag_l(!status[3]),
 
 	.clk_speed(0),
 	.clk_stop(0)
 );
 
+
 ////////////////////////////////////////////////////////////////////
 // Video 																			   //
 ////////////////////////////////////////////////////////////////////			
 
-wire [7:0] G = {pix,pix,pix,pix,pix,pix,pix,pix};
+wire [7:0] G = {8{pix}};
 wire [7:0] R = status[2] ? 8'd0 : G;
 wire [7:0] B = R;
 
@@ -220,41 +230,31 @@ video_mixer #(10'd0, 10'd0, 3'd4) video_mixer
 	.ypbpr_full(1)
 );
 
+
 ////////////////////////////////////////////////////////////////////
 // Audio 																			//
 ////////////////////////////////////////////////////////////////////		
-// use a pwm to reduce audio output volume
-reg [7:0] aclk;
-always @(posedge CLOCK_27) 
-	aclk <= aclk + 8'd1;
-
-// limit volume to 1/8 => pwm < 32 
-wire tape_audio = tape_data && (aclk < 32);//only needed for Debug
 
 assign AUDIO_R = AUDIO_L;
-sigma_delta_dac #(.MSBI(9)) dac
+sigma_delta_dac #(.MSBI(1)) dac
 (
 	.CLK(clk),
 	.RESET(reset),
-	.DACin({1'b0, audioDat,tape_audio, 6'b000000}),
+	.DACin({audioDat^tape_write,tape_audio&tape_active}),
 	.DACout(AUDIO_L)
 );
 
+assign LED = ~(tape_active | ioctl_download);
 
-assign LED = !tape_data;
+wire        tape_audio;
+wire        tape_rd;
+wire [24:0] tape_addr;
+wire  [7:0] tape_data;
+wire        tape_pause = 0;
+wire        tape_active;
+wire        tape_write;
 
-wire tape_data;	
-tape tape (
-	// spi interface to io controller
-   .sdi        ( SPI_DI       ),
-   .sck        ( SPI_SCK      ),
-   .ss         ( SPI_SS2      ),
-
-	.clk        ( clk          ),
-	.ce_500k    ( ce_500k      ),
-	.play       ( buttons[1]   ),
-   .tape_out   ( tape_data    )
-);
+tape tape(.*);
 
 
 //////////////////////////////////////////////////////////////////////
