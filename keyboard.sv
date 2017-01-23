@@ -9,6 +9,7 @@ module keyboard
 
 	input       [3:0] keyrow,
 	output      [7:0] keyin,
+	output reg        shift_lock,
 
 	output reg [11:1] Fn = 0,
 	output reg  [2:0] mod = 0
@@ -27,127 +28,104 @@ assign keyin = keys[keyrow];
 reg  input_strobe = 0;
 wire shift = mod[0];
 
-function [6:0] ps2_to_pet(input shift, input [7:0] code);
+function [8:0] ps2_to_pet(input shift, input [7:0] code);
 begin
-	case ({shift, code})
-		9'h0_05:	ps2_to_pet = 7'h49;	// 0x03 (STOP)
-		9'h1_05:	ps2_to_pet = 7'h49;	// 0x03
-		9'h0_11:	ps2_to_pet = 7'h08;	// ALT
-		9'h1_11:	ps2_to_pet = 7'h08;	// ALT
-		9'h0_15:	ps2_to_pet = 7'h02;	// 'q'
-		9'h1_15:	ps2_to_pet = 7'h02;	// 'Q'
-		9'h0_16:	ps2_to_pet = 7'h66;	// '1'
-		9'h1_16:	ps2_to_pet = 7'h00;	// '!'
-		9'h0_1A:	ps2_to_pet = 7'h06;	// 'z'
-		9'h1_1A:	ps2_to_pet = 7'h06;	// 'Z'
-		9'h0_1B:	ps2_to_pet = 7'h05;	// 's'
-		9'h1_1B:	ps2_to_pet = 7'h05;	// 'S'
-		9'h0_1C:	ps2_to_pet = 7'h04;	// 'a'
-		9'h1_1C:	ps2_to_pet = 7'h04;	// 'A'
-		9'h0_1D:	ps2_to_pet = 7'h03;	// 'w'
-		9'h1_1D:	ps2_to_pet = 7'h03;	// 'W'
-		9'h0_1E:	ps2_to_pet = 7'h67;	// '2'
-		9'h1_1E:	ps2_to_pet = 7'h18;	// '@'
-		9'h0_21:	ps2_to_pet = 7'h16;	// 'c'
-		9'h1_21:	ps2_to_pet = 7'h16;	// 'C'
-		9'h0_22:	ps2_to_pet = 7'h07;	// 'x'
-		9'h1_22:	ps2_to_pet = 7'h07;	// 'X'
-		9'h0_23:	ps2_to_pet = 7'h14;	// 'd'
-		9'h1_23:	ps2_to_pet = 7'h14;	// 'D'
-		9'h0_24:	ps2_to_pet = 7'h12;	// 'e'
-		9'h1_24:	ps2_to_pet = 7'h12;	// 'E'
-		9'h0_25:	ps2_to_pet = 7'h64;	// '4'
-		9'h1_25:	ps2_to_pet = 7'h11;	// '$'
-		9'h0_26:	ps2_to_pet = 7'h76;	// '3'
-		9'h1_26:	ps2_to_pet = 7'h10;	// '#'
-		9'h0_29:	ps2_to_pet = 7'h29;	// ' '
-		9'h1_29:	ps2_to_pet = 7'h29;	// ' '
-		9'h0_2A:	ps2_to_pet = 7'h17;	// 'v'
-		9'h1_2A:	ps2_to_pet = 7'h17;	// 'V'
-		9'h0_2B:	ps2_to_pet = 7'h15;	// 'f'
-		9'h1_2B:	ps2_to_pet = 7'h15;	// 'F'
-		9'h0_2C:	ps2_to_pet = 7'h22;	// 't'
-		9'h1_2C:	ps2_to_pet = 7'h22;	// 'T'
-		9'h0_2D:	ps2_to_pet = 7'h13;	// 'r'
-		9'h1_2D:	ps2_to_pet = 7'h13;	// 'R'
-		9'h0_2E:	ps2_to_pet = 7'h65;	// '5'
-		9'h1_2E:	ps2_to_pet = 7'h20;	// '%'
-		9'h0_2F:	ps2_to_pet = 7'h09;	// 0x12
-		9'h1_2F:	ps2_to_pet = 7'h09;	// 0x12
-		9'h0_31:	ps2_to_pet = 7'h27;	// 'n'
-		9'h1_31:	ps2_to_pet = 7'h27;	// 'N'
-		9'h0_32:	ps2_to_pet = 7'h26;	// 'b'
-		9'h1_32:	ps2_to_pet = 7'h26;	// 'B'
-		9'h0_33:	ps2_to_pet = 7'h25;	// 'h'
-		9'h1_33:	ps2_to_pet = 7'h25;	// 'H'
-		9'h0_34:	ps2_to_pet = 7'h24;	// 'g'
-		9'h1_34:	ps2_to_pet = 7'h24;	// 'G'
-		9'h0_35:	ps2_to_pet = 7'h23;	// 'y'
-		9'h1_35:	ps2_to_pet = 7'h23;	// 'Y'
-		9'h0_36:	ps2_to_pet = 7'h74;	// '6'
-		9'h1_36:	ps2_to_pet = 7'h52;	// '^'
-		9'h0_3A:	ps2_to_pet = 7'h36;	// 'm'
-		9'h1_3A:	ps2_to_pet = 7'h36;	// 'M'
-		9'h0_3B:	ps2_to_pet = 7'h34;	// 'j'
-		9'h1_3B:	ps2_to_pet = 7'h34;	// 'J'
-		9'h0_3C:	ps2_to_pet = 7'h32;	// 'u'
-		9'h1_3C:	ps2_to_pet = 7'h32;	// 'U'
-		9'h0_3D:	ps2_to_pet = 7'h62;	// '7'
-		9'h1_3D:	ps2_to_pet = 7'h30;	// '&'
-		9'h0_3E:	ps2_to_pet = 7'h63;	// '8'
-		9'h1_3E:	ps2_to_pet = 7'h75;	// '*'
-		9'h0_41:	ps2_to_pet = 7'h37;	// ','
-		9'h1_41:	ps2_to_pet = 7'h39;	// '<'
-		9'h0_42:	ps2_to_pet = 7'h35;	// 'k'
-		9'h1_42:	ps2_to_pet = 7'h35;	// 'K'
-		9'h0_43:	ps2_to_pet = 7'h33;	// 'i'
-		9'h1_43:	ps2_to_pet = 7'h33;	// 'I'
-		9'h0_44:	ps2_to_pet = 7'h42;	// 'o'
-		9'h1_44:	ps2_to_pet = 7'h42;	// 'O'
-		9'h0_45:	ps2_to_pet = 7'h68;	// '0'
-		9'h1_45:	ps2_to_pet = 7'h41;	// ')'
-		9'h0_46:	ps2_to_pet = 7'h72;	// '9'
-		9'h1_46:	ps2_to_pet = 7'h40;	// '('
-		9'h0_49:	ps2_to_pet = 7'h69;	// '.'
-		9'h1_49:	ps2_to_pet = 7'h48;	// '>'
-		9'h0_4A:	ps2_to_pet = 7'h73;	// '/'
-		9'h1_4A:	ps2_to_pet = 7'h47;	// '?'
-		9'h0_4B:	ps2_to_pet = 7'h44;	// 'l'
-		9'h1_4B:	ps2_to_pet = 7'h44;	// 'L'
-		9'h0_4C:	ps2_to_pet = 7'h46;	// ';'
-		9'h1_4C:	ps2_to_pet = 7'h45;	// ':'
-		9'h0_4D:	ps2_to_pet = 7'h43;	// 'p'
-		9'h1_4D:	ps2_to_pet = 7'h43;	// 'P'
-		9'h0_4E:	ps2_to_pet = 7'h78;	// '-'
-		9'h1_4E:	ps2_to_pet = 7'h50;	// '_'
-		9'h0_52:	ps2_to_pet = 7'h21;	// '''
-		9'h1_52:	ps2_to_pet = 7'h01;	// '"'
-		9'h0_54:	ps2_to_pet = 7'h19;	// '['
-		9'h0_55:	ps2_to_pet = 7'h79;	// '='
-		9'h1_55:	ps2_to_pet = 7'h77;	// '+'
-		9'h0_5A:	ps2_to_pet = 7'h56;	// 0x0d
-		9'h1_5A:	ps2_to_pet = 7'h56;	// 0x0d
-		9'h0_5B:	ps2_to_pet = 7'h28;	// ']'
-		9'h0_5D:	ps2_to_pet = 7'h31;	// '\'
-		9'h0_66:	ps2_to_pet = 7'h71;	// 0x08
-		9'h1_66:	ps2_to_pet = 7'h71;	// 0x08
-		9'h0_6C:	ps2_to_pet = 7'h60;	// 0x13
-		9'h1_6C:	ps2_to_pet = 7'h60;	// 0x13
-		9'h0_72:	ps2_to_pet = 7'h61;	// 0x11
-		9'h1_72:	ps2_to_pet = 7'h61;	// 0x11
-		9'h0_74:	ps2_to_pet = 7'h70;	// 0x1d
-		9'h1_74:	ps2_to_pet = 7'h70;	// 0x1d
+	casex({shift, code})
+		'hx_76:	ps2_to_pet = 'h149;	// ESC   -> STOP
+		'hx_05:	ps2_to_pet = 'h1C9;	// F1    -> RUN
+		'hx_06:	ps2_to_pet = 'h1E0;	// F2    -> CLR
+		'hx_11:	ps2_to_pet = 'h58;	// ALT   -> R SHIFT
+		'hx_14:	ps2_to_pet = 'h08;	// CTRL  -> L SHIFT
+		'hx_1F:	ps2_to_pet = 'h09;	// L GUI -> REV ON/OFF
+		'hx_58:	ps2_to_pet = 'h58;	// CAPS  -> R SHIFT
+		'hx_5A:	ps2_to_pet = 'h56;	// RETURN
+		'hx_66:	ps2_to_pet = 'h71;	// BKSP  -> DEL
+		'hx_71:	ps2_to_pet = 'h171;	// DEL
+		'hx_70:	ps2_to_pet = 'h1F1;	// INSERT
+		'hx_6C:	ps2_to_pet = 'h160;	// HOME
+		'hx_72:	ps2_to_pet = 'h161;	// DOWN
+		'hx_75:	ps2_to_pet = 'h1E1;	// UP
+		'hx_74:	ps2_to_pet = 'h170;	// RIGHT
+		'hx_6B:	ps2_to_pet = 'h1F0;	// LEFT
 
-		default:	ps2_to_pet = 7'h7f;
+		'h0_16:	ps2_to_pet = 'h66;	// '1'
+		'h1_16:	ps2_to_pet = 'h00;	// '!'
+		'h0_1E:	ps2_to_pet = 'h67;	// '2'
+		'h1_1E:	ps2_to_pet = 'h18;	// '@'
+		'h0_26:	ps2_to_pet = 'h76;	// '3'
+		'h1_26:	ps2_to_pet = 'h10;	// '#'
+		'h0_25:	ps2_to_pet = 'h64;	// '4'
+		'h1_25:	ps2_to_pet = 'h11;	// '$'
+		'h0_2E:	ps2_to_pet = 'h65;	// '5'
+		'h1_2E:	ps2_to_pet = 'h20;	// '%'
+		'h0_36:	ps2_to_pet = 'h74;	// '6'
+		'h1_36:	ps2_to_pet = 'h52;	// '^'
+		'h0_3D:	ps2_to_pet = 'h62;	// '7'
+		'h1_3D:	ps2_to_pet = 'h30;	// '&'
+		'h0_3E:	ps2_to_pet = 'h63;	// '8'
+		'h1_3E:	ps2_to_pet = 'h75;	// '*'
+		'h0_46:	ps2_to_pet = 'h72;	// '9'
+		'h1_46:	ps2_to_pet = 'h40;	// '('
+		'h0_45:	ps2_to_pet = 'h68;	// '0'
+		'h1_45:	ps2_to_pet = 'h41;	// ')'
+
+		'hx_1C:	ps2_to_pet = 'h04;	// 'a'
+		'hx_32:	ps2_to_pet = 'h26;	// 'b'
+		'hx_21:	ps2_to_pet = 'h16;	// 'c'
+		'hx_23:	ps2_to_pet = 'h14;	// 'd'
+		'hx_24:	ps2_to_pet = 'h12;	// 'e'
+		'hx_2B:	ps2_to_pet = 'h15;	// 'f'
+		'hx_34:	ps2_to_pet = 'h24;	// 'g'
+		'hx_33:	ps2_to_pet = 'h25;	// 'h'
+		'hx_43:	ps2_to_pet = 'h33;	// 'i'
+		'hx_3B:	ps2_to_pet = 'h34;	// 'j'
+		'hx_42:	ps2_to_pet = 'h35;	// 'k'
+		'hx_4B:	ps2_to_pet = 'h44;	// 'l'
+		'hx_3A:	ps2_to_pet = 'h36;	// 'm'
+		'hx_31:	ps2_to_pet = 'h27;	// 'n'
+		'hx_44:	ps2_to_pet = 'h42;	// 'o'
+		'hx_4D:	ps2_to_pet = 'h43;	// 'p'
+		'hx_15:	ps2_to_pet = 'h02;	// 'q'
+		'hx_2D:	ps2_to_pet = 'h13;	// 'r'
+		'hx_1B:	ps2_to_pet = 'h05;	// 's'
+		'hx_2C:	ps2_to_pet = 'h22;	// 't'
+		'hx_3C:	ps2_to_pet = 'h32;	// 'u'
+		'hx_2A:	ps2_to_pet = 'h17;	// 'v'
+		'hx_1D:	ps2_to_pet = 'h03;	// 'w'
+		'hx_22:	ps2_to_pet = 'h07;	// 'x'
+		'hx_35:	ps2_to_pet = 'h23;	// 'y'
+		'hx_1A:	ps2_to_pet = 'h06;	// 'z'
+
+		'h0_41:	ps2_to_pet = 'h37;	// ','
+		'h1_41:	ps2_to_pet = 'h39;	// '<'
+		'h0_49:	ps2_to_pet = 'h69;	// '.'
+		'h1_49:	ps2_to_pet = 'h48;	// '>'
+		'h0_4A:	ps2_to_pet = 'h73;	// '/'
+		'h1_4A:	ps2_to_pet = 'h47;	// '?'
+		'h0_4C:	ps2_to_pet = 'h46;	// ';'
+		'h1_4C:	ps2_to_pet = 'h45;	// ':'
+		'h0_4E:	ps2_to_pet = 'h78;	// '-'
+		'h1_4E:	ps2_to_pet = 'h50;	// '_'
+		'h0_52:	ps2_to_pet = 'h21;	// '''
+		'h1_52:	ps2_to_pet = 'h01;	// '"'
+		'h0_55:	ps2_to_pet = 'h79;	// '='
+		'h1_55:	ps2_to_pet = 'h77;	// '+'
+		'hx_54:	ps2_to_pet = 'h19;	// '['
+		'hx_5B:	ps2_to_pet = 'h28;	// ']'
+		'hx_5D:	ps2_to_pet = 'h31;	// '\'
+		'hx_29:	ps2_to_pet = 'h29;	// ' '
+
+		default:	ps2_to_pet = 'h7f;
 	endcase
 end
 endfunction
 
 wire [3:0] key_row;
 wire [2:0] key_col;
+wire       key_shift;
+wire       key_shift_state;
 
-assign {key_col, key_row} = ps2_to_pet(shift, code);
-
+assign {key_shift, key_shift_state, key_col, key_row} = ps2_to_pet(shift, code);
 
 always @(negedge clk) begin
 	reg old_reset = 0;
@@ -165,6 +143,7 @@ always @(negedge clk) begin
 		keys[7] <= 8'hFF;
 		keys[8] <= 8'hFF;
 		keys[9] <= 8'hFF;
+		shift_lock <= 0;
 	end
 
 	if(input_strobe) begin
@@ -186,7 +165,18 @@ always @(negedge clk) begin
 			8'h78: Fn[11]<= ~release_btn; // F11
 		endcase
 		
-		if(key_row < 10) keys[key_row][key_col] <= release_btn;
+		if((code == 'h58) && ~release_btn) shift_lock <= ~shift_lock;
+
+		if(key_row < 10) begin
+			keys[key_row][key_col] <= ({key_col, key_row}=='h58) ? release_btn ^ shift_lock : release_btn;
+			if(key_shift) begin
+				if(~release_btn) begin
+					keys[8][5] <= ~key_shift_state;
+				end else begin
+					keys[8][5] <= ~shift_lock;
+				end
+			end
+		end
 	end
 end
 

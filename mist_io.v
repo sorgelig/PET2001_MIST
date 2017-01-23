@@ -82,6 +82,7 @@ module mist_io #(parameter STRLEN=0, parameter PS2DIV=100)
 	output reg        ps2_kbd_data,
 	output            ps2_mouse_clk,
 	output reg        ps2_mouse_data,
+	input             ps2_caps_led,
 
 	// ARM -> FPGA download
 	output reg        ioctl_download = 0, // signal indicating an active download
@@ -118,6 +119,8 @@ wire [7:0] sd_cmd = { 4'h5, sd_conf, sd_sdhc, sd_wr, sd_rd };
 reg spi_do;
 assign SPI_DO = CONF_DATA0 ? 1'bZ : spi_do;
 
+wire [7:0] kbd_led = { 2'b01, 4'b0000, ps2_caps_led, 1'b1};
+
 // drive MISO only when transmitting core id
 always@(negedge SPI_SCK) begin
 	if(!CONF_DATA0) begin
@@ -145,6 +148,10 @@ always@(negedge SPI_SCK) begin
 				// reading sd card write data
 				8'h18:
 						spi_do <= b_data[~bit_cnt];
+
+				// reading keyboard LED status
+				8'h1f:
+						spi_do <= kbd_led[~bit_cnt];
 
 				default:
 						spi_do <= 0;

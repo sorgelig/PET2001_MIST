@@ -90,7 +90,7 @@ pet2001rom rom
 	.q_b(chardata),
 	.address_a(addr[13:0]),
 	.address_b({3'b101,charaddr}),
-	.clock(~clk)
+	.clock(clk)
 );
 
 	

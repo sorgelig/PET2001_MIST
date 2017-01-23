@@ -76,8 +76,8 @@ mist_io #(.STRLEN(($size(CONF_STR)>>3))) mist_io
 	.ypbpr          (ypbpr          ),
 	.ps2_kbd_clk    (ps2_kbd_clk    ),
 	.ps2_kbd_data   (ps2_kbd_data   ),
+	.ps2_caps_led   (shift_lock     ),
 	.status         (status         ),
-	
 	.ioctl_download (ioctl_download ),
 	.ioctl_index    (ioctl_index    ),
 	.ioctl_wr       (ioctl_wr       ),
@@ -285,6 +285,7 @@ always @(posedge clk) if((|status[8:7] ? ce_1m : ce_7mp) && (tape_active || act_
 //////////////////////////////////////////////////////////////////////
 wire [7:0] 	keyin;
 wire [3:0] 	keyrow;	 
+wire        shift_lock;
 
 keyboard keyboard(.*, .Fn(), .mod());
 
