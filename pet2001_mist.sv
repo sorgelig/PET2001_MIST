@@ -46,13 +46,11 @@ wire        ps2_kbd_clk, ps2_kbd_data;
 
 localparam CONF_STR = 
 {
-	"PET2001;TAP;",
-	"F0,PRG;",
-	"O7,Fast TAP loading,On,Off;",
+	"PET2001;TAPPRG;",
+	"O78,TAP mode,Sound/Fast,Sound/Normal,Silent/Fast,Silent/Normal;",
 	"O2,Screen Color,White,Green;",
 	"O3,Diag,Off,On(needs Reset);",
 	"O56,Scanlines,None,25%,50%,75%;",
-	"T4,Reset;",
 	"V,v0.6;"
 };
 
@@ -103,7 +101,7 @@ pll pll
 );
 
 reg       reset = 1;
-wire      RESET = status[0] | status[4] | buttons[1];
+wire      RESET = status[0] | buttons[1];
 always @(posedge clk) begin
 	integer   initRESET = 100000000;
 	reg [3:0] reset_cnt;
@@ -214,15 +212,15 @@ pet2001hw hw
 	.dma_addr(dma_off[13:0]+ioctl_addr[13:0]-2'd2),
 	.dma_din(ioctl_dout),
 	.dma_dout(),
-	.dma_we(ioctl_wr && ioctl_download && (ioctl_index == 2) && (ioctl_addr>1)),
+	.dma_we(ioctl_wr && ioctl_download && (ioctl_index == 8'h41) && (ioctl_addr>1)),
 
 	.clk_speed(0),
 	.clk_stop(0)
 );
 
-reg  [15:0] dma_off  = 0;
+reg [15:0] dma_off;
 always @(posedge clk) begin
-	if(ioctl_wr && ioctl_download && (ioctl_index == 2)) begin
+	if(ioctl_wr && ioctl_download && (ioctl_index == 8'h41)) begin
 		if(ioctl_addr == 0) dma_off[7:0]  <= ioctl_dout;
 		if(ioctl_addr == 1) dma_off[15:8] <= ioctl_dout;
 	end
@@ -258,11 +256,11 @@ sigma_delta_dac #(.MSBI(1)) dac
 (
 	.CLK(clk),
 	.RESET(reset),
-	.DACin({audioDat^tape_write,tape_audio&tape_active}),
+	.DACin({audioDat ^ tape_write, tape_audio & tape_active & ~status[8]}),
 	.DACout(AUDIO_L)
 );
 
-assign LED = ~(tape_active | ioctl_download);
+assign LED = ~(tape_led | ioctl_download);
 
 wire        tape_audio;
 wire        tape_rd;
@@ -273,6 +271,10 @@ wire        tape_active;
 wire        tape_write;
 
 tape tape(.*, .ioctl_download(ioctl_download && (ioctl_index==1)));
+
+reg [18:0] act_cnt;
+wire       tape_led = act_cnt[18] ? act_cnt[17:10] <= act_cnt[7:0] : act_cnt[17:10] > act_cnt[7:0];
+always @(posedge clk) if(ce_1m && (tape_active || act_cnt[18] || act_cnt[17:0])) act_cnt <= act_cnt + 1'd1; 
 
 
 //////////////////////////////////////////////////////////////////////

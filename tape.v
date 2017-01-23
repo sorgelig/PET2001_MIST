@@ -93,7 +93,7 @@ always @(posedge clk) begin
 						16: size[7:0]   <= din;
 						17: size[15:8]  <= din;
 						18: size[23:16] <= din;
-						19: cnt         <= size ? size+1'd1 : 24'd0;
+						19: cnt         <= size ? size : 24'd0;
 						default:;
 					endcase
 				end else begin
