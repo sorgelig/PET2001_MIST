@@ -173,7 +173,6 @@ wire [7:0] 	cpu_data_out;
 wire [7:0] 	cpu_data_in;
 
 wire we;
-wire nmi;
 wire irq;
 
 cpu6502 cpu
@@ -181,7 +180,7 @@ cpu6502 cpu
 	.clk(clk),
 	.ce(ce_1m),
 	.reset(reset),
-	.nmi(nmi),
+	.nmi(0),
 	.irq(irq),
 	.din(cpu_data_in),
 	.dout(cpu_data_out),

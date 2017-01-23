@@ -44,7 +44,6 @@ module pet2001hw
 	input [7:0]      data_in,
 	output reg [7:0] data_out,
 	input            we,
-	output           nmi,
 	output           irq,
 
 	output           pix,
@@ -74,8 +73,6 @@ module pet2001hw
 	input            ce_1m,
 	input            reset
 );
-
-assign   nmi = 0;    // unused for now
 
 /////////////////////////////////////////////////////////////
 // Pet ROMS incuding character ROM.  Character data is read
@@ -154,14 +151,10 @@ pet2001video vid(.*);
 wire [7:0] 	io_read_data;
 wire 	io_we = we && (addr[15:11] == 5'b1110_1);
 
-//delay ce for io for stability.
-reg [1:0] ce_io;
-always @(negedge clk) ce_io <= {ce_io[0],ce_1m};
-
 pet2001io io
 (
 	.*,
-	.ce(ce_io[1]),
+	.ce(ce_1m),
 	.data_out(io_read_data),
 	.data_in(data_in),
 	.addr(addr[10:0]),
