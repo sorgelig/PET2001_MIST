@@ -60,6 +60,11 @@ module pet2001hw
 	input            cass_read,
 	output           audio, // CB2 audio
 
+	input  [13:0]    dma_addr,
+	input   [7:0]    dma_din,
+	output  [7:0]    dma_dout,
+	input            dma_we,
+
 	input            clk_speed,
 	input            clk_stop,
 	input            diag_l,
@@ -105,11 +110,17 @@ wire	vram_we = we && (addr[15:11] == 5'b1000_0);
 
 pet2001ram ram
 (
-	.q(ram_data),
-	.data(data_in),
-	.address(addr[13:0]),
-	.wren(ram_we),       
-	.clock(clk)
+	.clock(clk),
+
+	.q_a(ram_data),
+	.data_a(data_in),
+	.address_a(addr[13:0]),
+	.wren_a(ram_we),
+
+	.q_b(dma_dout),
+	.data_b(dma_din),
+	.address_b(dma_addr),
+	.wren_b(dma_we)
 );
 
 pet2001vram vidram

@@ -86,7 +86,7 @@ module mist_io #(parameter STRLEN=0, parameter PS2DIV=100)
 	// ARM -> FPGA download
 	output reg        ioctl_download = 0, // signal indicating an active download
 	output reg  [7:0] ioctl_index,        // menu index used to upload the file
-	output reg        ioctl_wr = 0,
+	output            ioctl_wr,
 	output reg [24:0] ioctl_addr,
 	output reg  [7:0] ioctl_dout
 );
@@ -464,17 +464,20 @@ always@(posedge SPI_SCK, posedge SPI_SS2) begin
 	end
 end
 
-always@(posedge clk_sys) begin
+assign ioctl_wr = |ioctl_wrd;
+reg [1:0] ioctl_wrd;
+
+always@(negedge clk_sys) begin
 	reg        rclkD, rclkD2;
 
 	rclkD    <= rclk;
 	rclkD2   <= rclkD;
-	ioctl_wr <= 0;
+	ioctl_wrd<= {ioctl_wrd[0],1'b0};
 
 	if(rclkD & ~rclkD2) begin
 		ioctl_dout <= data_w;
 		ioctl_addr <= addr_w;
-		ioctl_wr   <= 1;
+		ioctl_wrd  <= 2'b11;
 	end
 end
 
