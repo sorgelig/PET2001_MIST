@@ -47,7 +47,7 @@ wire        ps2_kbd_clk, ps2_kbd_data;
 localparam CONF_STR = 
 {
 	"PET2001;TAPPRG;",
-	"O78,TAP mode,Sound/Fast,Sound/Normal,Silent/Fast,Silent/Normal;",
+	"O78,TAP mode,Fast,Normal,Normal+Sound;",
 	"O2,Screen Color,White,Green;",
 	"O3,Diag,Off,On(needs Reset);",
 	"O56,Scanlines,None,25%,50%,75%;",
@@ -138,15 +138,17 @@ always @(negedge clk) begin
 	cpu_div <= cpu_div + 1'd1;
 	if(cpu_div == cpu_rate) begin
 		cpu_div  <= 0;
-		cpu_rate <= (tape_active && !status[7]) ? 7'd30 : 7'd111;
+		cpu_rate <= (tape_active && !status[8:7]) ? 7'd5 : 7'd111;
 	end
-	ce_1m <= !cpu_div;
+	ce_1m <= ~(tape_active & ~ram_ready) && !cpu_div;
 end
 
 
 ///////////////////////////////////////////////////
 // RAM
 ///////////////////////////////////////////////////
+
+wire ram_ready;
 
 sram ram
 (
@@ -158,7 +160,7 @@ sram ram
 	.wtbt(0),
 	.we( ioctl_download && ioctl_wr && (ioctl_index == 1)),
 	.rd(!ioctl_download && tape_rd),
-	.ready()
+	.ready(ram_ready)
 );
 
 
@@ -256,7 +258,7 @@ sigma_delta_dac #(.MSBI(1)) dac
 (
 	.CLK(clk),
 	.RESET(reset),
-	.DACin({audioDat ^ tape_write, tape_audio & tape_active & ~status[8]}),
+	.DACin({audioDat ^ tape_write, tape_audio & tape_active & (status[8:7] == 2)}),
 	.DACout(AUDIO_L)
 );
 
@@ -274,7 +276,7 @@ tape tape(.*, .ioctl_download(ioctl_download && (ioctl_index==1)));
 
 reg [18:0] act_cnt;
 wire       tape_led = act_cnt[18] ? act_cnt[17:10] <= act_cnt[7:0] : act_cnt[17:10] > act_cnt[7:0];
-always @(posedge clk) if(ce_1m && (tape_active || act_cnt[18] || act_cnt[17:0])) act_cnt <= act_cnt + 1'd1; 
+always @(posedge clk) if((|status[8:7] ? ce_1m : ce_7mp) && (tape_active || act_cnt[18] || act_cnt[17:0])) act_cnt <= act_cnt + 1'd1; 
 
 
 //////////////////////////////////////////////////////////////////////
