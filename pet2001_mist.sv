@@ -48,6 +48,7 @@ localparam CONF_STR =
 {
 	"PET2001;TAPPRG;",
 	"O78,TAP mode,Fast,Normal,Normal+Sound;",
+	"O9A,CPU Speed,Normal,x2,x4,x8;",
 	"O2,Screen Color,White,Green;",
 	"O3,Diag,Off,On(needs Reset);",
 	"O56,Scanlines,None,25%,50%,75%;",
@@ -124,6 +125,7 @@ reg  ce_14mp;
 reg  ce_7mp;
 reg  ce_7mn;
 reg  ce_1m;
+wire [6:0] cpu_rates[4] = '{111, 55, 27, 13};
 
 always @(negedge clk) begin
 	reg  [4:0] div = 0;
@@ -138,7 +140,7 @@ always @(negedge clk) begin
 	cpu_div <= cpu_div + 1'd1;
 	if(cpu_div == cpu_rate) begin
 		cpu_div  <= 0;
-		cpu_rate <= (tape_active && !status[8:7]) ? 7'd5 : 7'd111;
+		cpu_rate <= (tape_active && !status[8:7]) ? 7'd5 : cpu_rates[status[10:9]];
 	end
 	ce_1m <= ~(tape_active & ~ram_ready) && !cpu_div;
 end
