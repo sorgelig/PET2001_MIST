@@ -103,7 +103,7 @@ pll pll
 reg       reset = 1;
 wire      RESET = status[0] | buttons[1];
 always @(posedge clk) begin
-	integer   initRESET = 100000000;
+	integer   initRESET = 20000000;
 	reg [3:0] reset_cnt;
 
 	if ((!RESET && reset_cnt==4'd14) && !initRESET)
