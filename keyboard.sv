@@ -23,109 +23,10 @@ reg  [7:0] keys[10];
 reg        release_btn = 0;
 reg  [7:0] code;
 
-assign keyin = keys[keyrow];
+assign     keyin = keys[keyrow];
 
-reg  input_strobe = 0;
-wire shift = mod[0];
-
-function [8:0] ps2_to_pet(input shift, input [7:0] code);
-begin
-	casex({shift, code})
-		'hx_76:	ps2_to_pet = 'h149;	// ESC   -> STOP
-		'hx_05:	ps2_to_pet = 'h1C9;	// F1    -> RUN
-		'hx_06:	ps2_to_pet = 'h1E0;	// F2    -> CLR
-		'hx_11:	ps2_to_pet = 'h58;	// ALT   -> R SHIFT
-		'hx_14:	ps2_to_pet = 'h08;	// CTRL  -> L SHIFT
-		'hx_1F:	ps2_to_pet = 'h09;	// L GUI -> REV ON/OFF
-		'hx_58:	ps2_to_pet = 'h58;	// CAPS  -> R SHIFT
-		'hx_5A:	ps2_to_pet = 'h56;	// RETURN
-		'hx_66:	ps2_to_pet = 'h71;	// BKSP  -> DEL
-		'hx_71:	ps2_to_pet = 'h171;	// DEL
-		'hx_70:	ps2_to_pet = 'h1F1;	// INSERT
-		'hx_6C:	ps2_to_pet = 'h160;	// HOME
-		'hx_72:	ps2_to_pet = 'h161;	// DOWN
-		'hx_75:	ps2_to_pet = 'h1E1;	// UP
-		'hx_74:	ps2_to_pet = 'h170;	// RIGHT
-		'hx_6B:	ps2_to_pet = 'h1F0;	// LEFT
-
-		'h0_16:	ps2_to_pet = 'h66;	// '1'
-		'h1_16:	ps2_to_pet = 'h00;	// '!'
-		'h0_1E:	ps2_to_pet = 'h67;	// '2'
-		'h1_1E:	ps2_to_pet = 'h18;	// '@'
-		'h0_26:	ps2_to_pet = 'h76;	// '3'
-		'h1_26:	ps2_to_pet = 'h10;	// '#'
-		'h0_25:	ps2_to_pet = 'h64;	// '4'
-		'h1_25:	ps2_to_pet = 'h11;	// '$'
-		'h0_2E:	ps2_to_pet = 'h65;	// '5'
-		'h1_2E:	ps2_to_pet = 'h20;	// '%'
-		'h0_36:	ps2_to_pet = 'h74;	// '6'
-		'h1_36:	ps2_to_pet = 'h52;	// '^'
-		'h0_3D:	ps2_to_pet = 'h62;	// '7'
-		'h1_3D:	ps2_to_pet = 'h30;	// '&'
-		'h0_3E:	ps2_to_pet = 'h63;	// '8'
-		'h1_3E:	ps2_to_pet = 'h75;	// '*'
-		'h0_46:	ps2_to_pet = 'h72;	// '9'
-		'h1_46:	ps2_to_pet = 'h40;	// '('
-		'h0_45:	ps2_to_pet = 'h68;	// '0'
-		'h1_45:	ps2_to_pet = 'h41;	// ')'
-
-		'hx_1C:	ps2_to_pet = 'h04;	// 'a'
-		'hx_32:	ps2_to_pet = 'h26;	// 'b'
-		'hx_21:	ps2_to_pet = 'h16;	// 'c'
-		'hx_23:	ps2_to_pet = 'h14;	// 'd'
-		'hx_24:	ps2_to_pet = 'h12;	// 'e'
-		'hx_2B:	ps2_to_pet = 'h15;	// 'f'
-		'hx_34:	ps2_to_pet = 'h24;	// 'g'
-		'hx_33:	ps2_to_pet = 'h25;	// 'h'
-		'hx_43:	ps2_to_pet = 'h33;	// 'i'
-		'hx_3B:	ps2_to_pet = 'h34;	// 'j'
-		'hx_42:	ps2_to_pet = 'h35;	// 'k'
-		'hx_4B:	ps2_to_pet = 'h44;	// 'l'
-		'hx_3A:	ps2_to_pet = 'h36;	// 'm'
-		'hx_31:	ps2_to_pet = 'h27;	// 'n'
-		'hx_44:	ps2_to_pet = 'h42;	// 'o'
-		'hx_4D:	ps2_to_pet = 'h43;	// 'p'
-		'hx_15:	ps2_to_pet = 'h02;	// 'q'
-		'hx_2D:	ps2_to_pet = 'h13;	// 'r'
-		'hx_1B:	ps2_to_pet = 'h05;	// 's'
-		'hx_2C:	ps2_to_pet = 'h22;	// 't'
-		'hx_3C:	ps2_to_pet = 'h32;	// 'u'
-		'hx_2A:	ps2_to_pet = 'h17;	// 'v'
-		'hx_1D:	ps2_to_pet = 'h03;	// 'w'
-		'hx_22:	ps2_to_pet = 'h07;	// 'x'
-		'hx_35:	ps2_to_pet = 'h23;	// 'y'
-		'hx_1A:	ps2_to_pet = 'h06;	// 'z'
-
-		'h0_41:	ps2_to_pet = 'h37;	// ','
-		'h1_41:	ps2_to_pet = 'h39;	// '<'
-		'h0_49:	ps2_to_pet = 'h69;	// '.'
-		'h1_49:	ps2_to_pet = 'h48;	// '>'
-		'h0_4A:	ps2_to_pet = 'h73;	// '/'
-		'h1_4A:	ps2_to_pet = 'h47;	// '?'
-		'h0_4C:	ps2_to_pet = 'h46;	// ';'
-		'h1_4C:	ps2_to_pet = 'h45;	// ':'
-		'h0_4E:	ps2_to_pet = 'h78;	// '-'
-		'h1_4E:	ps2_to_pet = 'h50;	// '_'
-		'h0_52:	ps2_to_pet = 'h21;	// '''
-		'h1_52:	ps2_to_pet = 'h01;	// '"'
-		'h0_55:	ps2_to_pet = 'h79;	// '='
-		'h1_55:	ps2_to_pet = 'h77;	// '+'
-		'hx_54:	ps2_to_pet = 'h19;	// '['
-		'hx_5B:	ps2_to_pet = 'h28;	// ']'
-		'hx_5D:	ps2_to_pet = 'h31;	// '\'
-		'hx_29:	ps2_to_pet = 'h29;	// ' '
-
-		default:	ps2_to_pet = 'h7f;
-	endcase
-end
-endfunction
-
-wire [3:0] key_row;
-wire [2:0] key_col;
-wire       key_shift;
-wire       key_shift_state;
-
-assign {key_shift, key_shift_state, key_col, key_row} = ps2_to_pet(shift, code);
+reg        input_strobe = 0;
+wire       shift = mod[0];
 
 always @(negedge clk) begin
 	reg old_reset = 0;
@@ -164,19 +65,138 @@ always @(negedge clk) begin
 			8'h09: Fn[10]<= ~release_btn; // F10
 			8'h78: Fn[11]<= ~release_btn; // F11
 		endcase
-		
-		if((code == 'h58) && ~release_btn) shift_lock <= ~shift_lock;
 
-		if(key_row < 10) begin
-			keys[key_row][key_col] <= ({key_col, key_row}=='h58) ? release_btn ^ shift_lock : release_btn;
-			if(key_shift) begin
-				if(~release_btn) begin
-					keys[8][5] <= ~key_shift_state;
-				end else begin
-					keys[8][5] <= ~shift_lock;
-				end
-			end
-		end
+		casex({shift, code})
+			'hx_76: begin
+						keys[9][4] <= release_btn; // ESC -> STOP
+						if(~release_btn) keys[8][5] <= 1;
+							else keys[8][5] <= ~shift_lock;
+					end
+			'hx_05: begin
+						keys[9][4] <= release_btn; // F1 -> RUN
+						if(~release_btn) keys[8][5] <= 0;
+							else keys[8][5] <= ~shift_lock;
+					end
+			'hx_06: begin
+						keys[0][6] <= release_btn; // F2 -> CLR
+						if(~release_btn) keys[8][5] <= 0;
+							else keys[8][5] <= ~shift_lock;
+					end
+			'hx_71: begin
+						keys[1][7] <= release_btn; // DEL
+						if(~release_btn) keys[8][5] <= 1;
+							else keys[8][5] <= ~shift_lock;
+					end
+			'hx_70: begin
+						keys[1][7] <= release_btn; // INSERT
+						if(~release_btn) keys[8][5] <= 0;
+							else keys[8][5] <= ~shift_lock;
+					end
+			'hx_6C: begin
+						keys[0][6] <= release_btn; // HOME
+						if(~release_btn) keys[8][5] <= 1;
+							else keys[8][5] <= ~shift_lock;
+					end
+			'hx_72: begin
+						keys[1][6] <= release_btn; // DOWN
+						if(~release_btn) keys[8][5] <= 1;
+							else keys[8][5] <= ~shift_lock;
+					end
+			'hx_75: begin
+						keys[1][6] <= release_btn; // UP
+						if(~release_btn) keys[8][5] <= 0;
+							else keys[8][5] <= ~shift_lock;
+					end
+			'hx_74: begin
+						keys[0][7] <= release_btn; // RIGHT
+						if(~release_btn) keys[8][5] <= 1;
+							else keys[8][5] <= ~shift_lock;
+					end
+			'hx_6B: begin
+						keys[0][7] <= release_btn; // LEFT
+						if(~release_btn) keys[8][5] <= 0;
+							else keys[8][5] <= ~shift_lock;
+					end
+
+			'hx_58: begin
+						keys[8][5] <= release_btn ^ shift_lock; // CAPS -> R SHIFT
+						if(~release_btn) shift_lock <= ~shift_lock;
+					end
+
+			'hx_11: keys[8][5] <= release_btn ^ shift_lock;  // ALT  -> R SHIFT
+			'hx_14: keys[8][0] <= release_btn;  // CTRL  -> L SHIFT
+			'hx_1F: keys[9][0] <= release_btn;  // L GUI -> REV ON/OFF
+			'hx_5A: keys[6][5] <= release_btn;  // RETURN
+			'hx_66: keys[1][7] <= release_btn;  // BKSP  -> DEL
+
+			'h0_16: keys[6][6] <= release_btn;  // 1
+			'h1_16: keys[0][0] <= release_btn;  // !
+			'h0_1E: keys[7][6] <= release_btn;  // 2
+			'h1_1E: keys[8][1] <= release_btn;  // @
+			'h0_26: keys[6][7] <= release_btn;  // 3
+			'h1_26: keys[0][1] <= release_btn;  // #
+			'h0_25: keys[4][6] <= release_btn;  // 4
+			'h1_25: keys[1][1] <= release_btn;  // $
+			'h0_2E: keys[5][6] <= release_btn;  // 5
+			'h1_2E: keys[0][2] <= release_btn;  // %
+			'h0_36: keys[4][7] <= release_btn;  // 6
+			'h1_36: keys[2][5] <= release_btn;  // ^
+			'h0_3D: keys[2][6] <= release_btn;  // 7
+			'h1_3D: keys[0][3] <= release_btn;  // &
+			'h0_3E: keys[3][6] <= release_btn;  // 8
+			'h1_3E: keys[5][7] <= release_btn;  // *
+			'h0_46: keys[2][7] <= release_btn;  // 9
+			'h1_46: keys[0][4] <= release_btn;  // (
+			'h0_45: keys[8][6] <= release_btn;  // 0
+			'h1_45: keys[1][4] <= release_btn;  // )
+						
+			'hx_1C: keys[4][0] <= release_btn;  // a
+			'hx_32: keys[6][2] <= release_btn;  // b
+			'hx_21: keys[6][1] <= release_btn;  // c
+			'hx_23: keys[4][1] <= release_btn;  // d
+			'hx_24: keys[2][1] <= release_btn;  // e
+			'hx_2B: keys[5][1] <= release_btn;  // f
+			'hx_34: keys[4][2] <= release_btn;  // g
+			'hx_33: keys[5][2] <= release_btn;  // h
+			'hx_43: keys[3][3] <= release_btn;  // i
+			'hx_3B: keys[4][3] <= release_btn;  // j
+			'hx_42: keys[5][3] <= release_btn;  // k
+			'hx_4B: keys[4][4] <= release_btn;  // l
+			'hx_3A: keys[6][3] <= release_btn;  // m
+			'hx_31: keys[7][2] <= release_btn;  // n
+			'hx_44: keys[2][4] <= release_btn;  // o
+			'hx_4D: keys[3][4] <= release_btn;  // p
+			'hx_15: keys[2][0] <= release_btn;  // q
+			'hx_2D: keys[3][1] <= release_btn;  // r
+			'hx_1B: keys[5][0] <= release_btn;  // s
+			'hx_2C: keys[2][2] <= release_btn;  // t
+			'hx_3C: keys[2][3] <= release_btn;  // u
+			'hx_2A: keys[7][1] <= release_btn;  // v
+			'hx_1D: keys[3][0] <= release_btn;  // w
+			'hx_22: keys[7][0] <= release_btn;  // x
+			'hx_35: keys[3][2] <= release_btn;  // y
+			'hx_1A: keys[6][0] <= release_btn;  // z
+						
+			'h0_41: keys[7][3] <= release_btn;  // ,
+			'h1_41: keys[9][3] <= release_btn;  // <
+			'h0_49: keys[9][6] <= release_btn;  // .
+			'h1_49: keys[8][4] <= release_btn;  // >
+			'h0_4A: keys[3][7] <= release_btn;  // /
+			'h1_4A: keys[7][4] <= release_btn;  // ?
+			'h0_4C: keys[6][4] <= release_btn;  // ;
+			'h1_4C: keys[5][4] <= release_btn;  // :
+			'h0_4E: keys[8][7] <= release_btn;  // -
+			'h1_4E: keys[0][5] <= release_btn;  // _
+			'h0_52: keys[1][2] <= release_btn;  // '
+			'h1_52: keys[1][0] <= release_btn;  // "
+			'h0_55: keys[9][7] <= release_btn;  // =
+			'h1_55: keys[7][7] <= release_btn;  // +
+			'hx_54: keys[9][1] <= release_btn;  // [
+			'hx_5B: keys[8][2] <= release_btn;  // ]
+			'hx_5D: keys[1][3] <= release_btn;  // \
+			'hx_29: keys[9][2] <= release_btn;  // SPACE
+			default:;
+		endcase
 	end
 end
 
