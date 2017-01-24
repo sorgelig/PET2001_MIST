@@ -90,14 +90,15 @@ mist_io #(.STRLEN(($size(CONF_STR)>>3))) mist_io
 // Global Clock and System Reset.                //
 //////////////////////////////////////////////////////////////////////
 
-wire clk;
+wire clk, sdram_clk;
 wire locked;
 
 pll pll
 (
 	.inclk0(CLOCK_27),
-	.c0(clk),          //112Mhz
+	.c0(sdram_clk),    //112Mhz
 	.c1(SDRAM_CLK),    //112Mhz
+	.c2(clk),          //56MHz
 	.locked(locked)
 );
 
@@ -125,22 +126,22 @@ reg  ce_14mp;
 reg  ce_7mp;
 reg  ce_7mn;
 reg  ce_1m;
-wire [6:0] cpu_rates[4] = '{111, 55, 27, 13};
+wire [6:0] cpu_rates[4] = '{55, 27, 13, 6};
 
 always @(negedge clk) begin
 	reg  [4:0] div = 0;
 	reg  [6:0] cpu_div = 0;
-	reg  [6:0] cpu_rate = 111;
+	reg  [6:0] cpu_rate = 55;
 
 	div <= div + 1'd1;
-	ce_14mp <= !div[2] & !div[1:0];
-	ce_7mp  <= !div[3] & !div[2:0];
-	ce_7mn  <=  div[3] & !div[2:0];
+	ce_14mp <= !div[1] & !div[0:0];
+	ce_7mp  <= !div[2] & !div[1:0];
+	ce_7mn  <=  div[2] & !div[1:0];
 	
 	cpu_div <= cpu_div + 1'd1;
 	if(cpu_div == cpu_rate) begin
 		cpu_div  <= 0;
-		cpu_rate <= (tape_active && !status[8:7]) ? 7'd5 : cpu_rates[status[10:9]];
+		cpu_rate <= (tape_active && !status[8:7]) ? 7'd2 : cpu_rates[status[10:9]];
 	end
 	ce_1m <= ~(tape_active & ~ram_ready) && !cpu_div;
 end
@@ -155,6 +156,7 @@ wire ram_ready;
 sram ram
 (
 	.*,
+	.clk(sdram_clk),
 	.init(~locked),
 	.dout(tape_data),
 	.din (ioctl_dout),

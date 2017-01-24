@@ -76,12 +76,12 @@ module pet2001io
 );
 
 //delay ce for io for stability.
-reg [1:0] strobe_io;
-always @(negedge clk) strobe_io <= {strobe_io[0],ce};
+reg strobe_io;
+always @(negedge clk) strobe_io <= ce;
 
 /////////////////////////// 6520 PIA1 ////////////////////////////////////
 //
-wire       pia1_strobe = strobe_io[1] && (addr[10:2] == 9'b000_0001_00);
+wire       pia1_strobe = strobe_io && (addr[10:2] == 9'b000_0001_00);
 wire [7:0] pia1_data_out;
 wire       pia1_irq;
 wire [7:0] pia1_porta_out;
@@ -121,7 +121,7 @@ assign keyrow = pia1_porta_out[3:0];
  
 ////////////////////////// 6520 PIA2 ////////////////////////////////////
 // (does nothing for now)
-wire       pia2_strobe = strobe_io[1] && (addr[10:2] == 9'b000_0010_00);
+wire       pia2_strobe = strobe_io && (addr[10:2] == 9'b000_0010_00);
 wire [7:0] pia2_data_out;
 wire       pia2_irq;
 
@@ -154,7 +154,7 @@ pia6520 pia2
 
 /////////////////////////// 6522 VIA ////////////////////////////////////
 //
-wire	     via_strobe = strobe_io[1] && (addr[10:4] == 7'b000_0100);
+wire	     via_strobe = strobe_io && (addr[10:4] == 7'b000_0100);
 wire [7:0] via_data_out;
 wire       via_irq;
 wire [7:0] via_portb_out;
