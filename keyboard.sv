@@ -66,135 +66,186 @@ always @(negedge clk) begin
 			8'h78: Fn[11]<= ~release_btn; // F11
 		endcase
 
-		casex({shift, code})
-			'hx_76: begin
+		case(code)
+			'h76: begin
 						keys[9][4] <= release_btn; // ESC -> STOP
 						if(~release_btn) keys[8][5] <= 1;
 							else keys[8][5] <= ~shift_lock;
 					end
-			'hx_05: begin
+			'h05: begin
 						keys[9][4] <= release_btn; // F1 -> RUN
 						if(~release_btn) keys[8][5] <= 0;
 							else keys[8][5] <= ~shift_lock;
 					end
-			'hx_06: begin
+			'h06: begin
 						keys[0][6] <= release_btn; // F2 -> CLR
 						if(~release_btn) keys[8][5] <= 0;
 							else keys[8][5] <= ~shift_lock;
 					end
-			'hx_71: begin
+			'h71: begin
 						keys[1][7] <= release_btn; // DEL
 						if(~release_btn) keys[8][5] <= 1;
 							else keys[8][5] <= ~shift_lock;
 					end
-			'hx_70: begin
+			'h70: begin
 						keys[1][7] <= release_btn; // INSERT
 						if(~release_btn) keys[8][5] <= 0;
 							else keys[8][5] <= ~shift_lock;
 					end
-			'hx_6C: begin
+			'h6C: begin
 						keys[0][6] <= release_btn; // HOME
 						if(~release_btn) keys[8][5] <= 1;
 							else keys[8][5] <= ~shift_lock;
 					end
-			'hx_72: begin
+			'h72: begin
 						keys[1][6] <= release_btn; // DOWN
 						if(~release_btn) keys[8][5] <= 1;
 							else keys[8][5] <= ~shift_lock;
 					end
-			'hx_75: begin
+			'h75: begin
 						keys[1][6] <= release_btn; // UP
 						if(~release_btn) keys[8][5] <= 0;
 							else keys[8][5] <= ~shift_lock;
 					end
-			'hx_74: begin
+			'h74: begin
 						keys[0][7] <= release_btn; // RIGHT
 						if(~release_btn) keys[8][5] <= 1;
 							else keys[8][5] <= ~shift_lock;
 					end
-			'hx_6B: begin
+			'h6B: begin
 						keys[0][7] <= release_btn; // LEFT
 						if(~release_btn) keys[8][5] <= 0;
 							else keys[8][5] <= ~shift_lock;
 					end
 
-			'hx_58: begin
+			'h58: begin
 						keys[8][5] <= release_btn ^ shift_lock; // CAPS -> R SHIFT
 						if(~release_btn) shift_lock <= ~shift_lock;
 					end
 
-			'hx_11: keys[8][5] <= release_btn ^ shift_lock;  // ALT  -> R SHIFT
-			'hx_14: keys[8][0] <= release_btn;  // CTRL  -> L SHIFT
-			'hx_1F: keys[9][0] <= release_btn;  // L GUI -> REV ON/OFF
-			'hx_5A: keys[6][5] <= release_btn;  // RETURN
-			'hx_66: keys[1][7] <= release_btn;  // BKSP  -> DEL
+			'h11: keys[8][5] <= release_btn ^ shift_lock;  // ALT  -> R SHIFT
+			'h14: keys[8][0] <= release_btn;  // CTRL  -> L SHIFT
+			'h1F: keys[9][0] <= release_btn;  // L GUI -> REV ON/OFF
+			'h5A: keys[6][5] <= release_btn;  // RETURN
+			'h66: keys[1][7] <= release_btn;  // BKSP  -> DEL
 
-			'h0_16: keys[6][6] <= release_btn;  // 1
-			'h1_16: keys[0][0] <= release_btn;  // !
-			'h0_1E: keys[7][6] <= release_btn;  // 2
-			'h1_1E: keys[8][1] <= release_btn;  // @
-			'h0_26: keys[6][7] <= release_btn;  // 3
-			'h1_26: keys[0][1] <= release_btn;  // #
-			'h0_25: keys[4][6] <= release_btn;  // 4
-			'h1_25: keys[1][1] <= release_btn;  // $
-			'h0_2E: keys[5][6] <= release_btn;  // 5
-			'h1_2E: keys[0][2] <= release_btn;  // %
-			'h0_36: keys[4][7] <= release_btn;  // 6
-			'h1_36: keys[2][5] <= release_btn;  // ^
-			'h0_3D: keys[2][6] <= release_btn;  // 7
-			'h1_3D: keys[0][3] <= release_btn;  // &
-			'h0_3E: keys[3][6] <= release_btn;  // 8
-			'h1_3E: keys[5][7] <= release_btn;  // *
-			'h0_46: keys[2][7] <= release_btn;  // 9
-			'h1_46: keys[0][4] <= release_btn;  // (
-			'h0_45: keys[8][6] <= release_btn;  // 0
-			'h1_45: keys[1][4] <= release_btn;  // )
+			'h1C: keys[4][0] <= release_btn;  // a
+			'h32: keys[6][2] <= release_btn;  // b
+			'h21: keys[6][1] <= release_btn;  // c
+			'h23: keys[4][1] <= release_btn;  // d
+			'h24: keys[2][1] <= release_btn;  // e
+			'h2B: keys[5][1] <= release_btn;  // f
+			'h34: keys[4][2] <= release_btn;  // g
+			'h33: keys[5][2] <= release_btn;  // h
+			'h43: keys[3][3] <= release_btn;  // i
+			'h3B: keys[4][3] <= release_btn;  // j
+			'h42: keys[5][3] <= release_btn;  // k
+			'h4B: keys[4][4] <= release_btn;  // l
+			'h3A: keys[6][3] <= release_btn;  // m
+			'h31: keys[7][2] <= release_btn;  // n
+			'h44: keys[2][4] <= release_btn;  // o
+			'h4D: keys[3][4] <= release_btn;  // p
+			'h15: keys[2][0] <= release_btn;  // q
+			'h2D: keys[3][1] <= release_btn;  // r
+			'h1B: keys[5][0] <= release_btn;  // s
+			'h2C: keys[2][2] <= release_btn;  // t
+			'h3C: keys[2][3] <= release_btn;  // u
+			'h2A: keys[7][1] <= release_btn;  // v
+			'h1D: keys[3][0] <= release_btn;  // w
+			'h22: keys[7][0] <= release_btn;  // x
+			'h35: keys[3][2] <= release_btn;  // y
+			'h1A: keys[6][0] <= release_btn;  // z
 						
-			'hx_1C: keys[4][0] <= release_btn;  // a
-			'hx_32: keys[6][2] <= release_btn;  // b
-			'hx_21: keys[6][1] <= release_btn;  // c
-			'hx_23: keys[4][1] <= release_btn;  // d
-			'hx_24: keys[2][1] <= release_btn;  // e
-			'hx_2B: keys[5][1] <= release_btn;  // f
-			'hx_34: keys[4][2] <= release_btn;  // g
-			'hx_33: keys[5][2] <= release_btn;  // h
-			'hx_43: keys[3][3] <= release_btn;  // i
-			'hx_3B: keys[4][3] <= release_btn;  // j
-			'hx_42: keys[5][3] <= release_btn;  // k
-			'hx_4B: keys[4][4] <= release_btn;  // l
-			'hx_3A: keys[6][3] <= release_btn;  // m
-			'hx_31: keys[7][2] <= release_btn;  // n
-			'hx_44: keys[2][4] <= release_btn;  // o
-			'hx_4D: keys[3][4] <= release_btn;  // p
-			'hx_15: keys[2][0] <= release_btn;  // q
-			'hx_2D: keys[3][1] <= release_btn;  // r
-			'hx_1B: keys[5][0] <= release_btn;  // s
-			'hx_2C: keys[2][2] <= release_btn;  // t
-			'hx_3C: keys[2][3] <= release_btn;  // u
-			'hx_2A: keys[7][1] <= release_btn;  // v
-			'hx_1D: keys[3][0] <= release_btn;  // w
-			'hx_22: keys[7][0] <= release_btn;  // x
-			'hx_35: keys[3][2] <= release_btn;  // y
-			'hx_1A: keys[6][0] <= release_btn;  // z
-						
-			'h0_41: keys[7][3] <= release_btn;  // ,
-			'h1_41: keys[9][3] <= release_btn;  // <
-			'h0_49: keys[9][6] <= release_btn;  // .
-			'h1_49: keys[8][4] <= release_btn;  // >
-			'h0_4A: keys[3][7] <= release_btn;  // /
-			'h1_4A: keys[7][4] <= release_btn;  // ?
-			'h0_4C: keys[6][4] <= release_btn;  // ;
-			'h1_4C: keys[5][4] <= release_btn;  // :
-			'h0_4E: keys[8][7] <= release_btn;  // -
-			'h1_4E: keys[0][5] <= release_btn;  // _
-			'h0_52: keys[1][2] <= release_btn;  // '
-			'h1_52: keys[1][0] <= release_btn;  // "
-			'h0_55: keys[9][7] <= release_btn;  // =
-			'h1_55: keys[7][7] <= release_btn;  // +
-			'hx_54: keys[9][1] <= release_btn;  // [
-			'hx_5B: keys[8][2] <= release_btn;  // ]
-			'hx_5D: keys[1][3] <= release_btn;  // \
-			'hx_29: keys[9][2] <= release_btn;  // SPACE
+			'h54: keys[9][1] <= release_btn;  // [
+			'h5B: keys[8][2] <= release_btn;  // ]
+			'h5D: keys[1][3] <= release_btn;  // \
+			'h29: keys[9][2] <= release_btn;  // SPACE
+
+			'h16: begin
+					keys[6][6] <= release_btn |  shift; // 1
+					keys[0][0] <= release_btn | ~shift; // !
+				end
+
+			'h1E: begin
+					keys[7][6] <= release_btn |  shift;  // 2
+					keys[8][1] <= release_btn | ~shift;  // @
+				end
+
+			'h26: begin
+					keys[6][7] <= release_btn |  shift;  // 3
+					keys[0][1] <= release_btn | ~shift;  // #
+				end
+
+			'h25: begin
+					keys[4][6] <= release_btn |  shift;  // 4
+					keys[1][1] <= release_btn | ~shift;  // $
+				end
+
+			'h2E: begin
+					keys[5][6] <= release_btn |  shift;  // 5
+					keys[0][2] <= release_btn | ~shift;  // %
+				end
+
+			'h36: begin
+					keys[4][7] <= release_btn |  shift;  // 6
+					keys[2][5] <= release_btn | ~shift;  // ^
+				end
+
+			'h3D: begin
+					keys[2][6] <= release_btn |  shift;  // 7
+					keys[0][3] <= release_btn | ~shift;  // &
+				end
+
+			'h3E: begin
+					keys[3][6] <= release_btn |  shift;  // 8
+					keys[5][7] <= release_btn | ~shift;  // *
+				end
+
+			'h46: begin
+					keys[2][7] <= release_btn |  shift;  // 9
+					keys[0][4] <= release_btn | ~shift;  // (
+				end
+
+			'h45: begin
+					keys[8][6] <= release_btn |  shift;  // 0
+					keys[1][4] <= release_btn | ~shift;  // )
+				end
+
+			'h41: begin
+					keys[7][3] <= release_btn |  shift;  // ,
+					keys[9][3] <= release_btn | ~shift;  // <
+				end
+
+			'h49: begin
+					keys[9][6] <= release_btn |  shift;  // .
+					keys[8][4] <= release_btn | ~shift;  // >
+				end
+
+			'h4A: begin
+					keys[3][7] <= release_btn |  shift;  // /
+					keys[7][4] <= release_btn | ~shift;  // ?
+				end
+
+			'h4C: begin
+					keys[6][4] <= release_btn |  shift;  // ;
+					keys[5][4] <= release_btn | ~shift;  // :
+				end
+
+			'h4E: begin
+					keys[8][7] <= release_btn |  shift;  // -
+					keys[0][5] <= release_btn | ~shift;  // _
+				end
+
+			'h52: begin
+					keys[1][2] <= release_btn |  shift;  // '
+					keys[1][0] <= release_btn | ~shift;  // "
+				end
+
+			'h55: begin
+					keys[9][7] <= release_btn |  shift;  // =
+					keys[7][7] <= release_btn | ~shift;  // +
+				end
+
 			default:;
 		endcase
 	end
