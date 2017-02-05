@@ -308,9 +308,10 @@ set_global_assignment -name MIF_FILE roms/Pet2001_RomType2.mif
 set_global_assignment -name MIF_FILE roms/Pet2001_RomType1.mif
 set_global_assignment -name VERILOG_FILE pll.v
 set_global_assignment -name SYSTEMVERILOG_FILE keyboard.sv
-set_global_assignment -name SYSTEMVERILOG_FILE video_mixer.sv
+set_global_assignment -name SYSTEMVERILOG_FILE hq2x.sv
 set_global_assignment -name VERILOG_FILE scandoubler.v
 set_global_assignment -name VERILOG_FILE osd.v
+set_global_assignment -name SYSTEMVERILOG_FILE video_mixer.sv
 set_global_assignment -name VERILOG_FILE mist_io.v
 set_global_assignment -name VERILOG_FILE tape.v
 set_global_assignment -name VERILOG_FILE sigma_delta_dac.v

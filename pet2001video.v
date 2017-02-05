@@ -29,7 +29,7 @@ reg  [8:0] vc;
 always @(posedge clk) begin
 	if(ce_7mp) begin
 		hc <= hc + 1'd1;
-		if(hc == 448) begin 
+		if(hc == 447) begin 
 			hc <=0;
 			vc <= vc + 1'd1;
 			if(vc == 261) vc <= 0;

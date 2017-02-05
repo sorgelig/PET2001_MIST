@@ -51,8 +51,8 @@ localparam CONF_STR =
 	"O9A,CPU Speed,Normal,x2,x4,x8;",
 	"O2,Screen Color,White,Green;",
 	"O3,Diag,Off,On(needs Reset);",
-	"O56,Scanlines,None,25%,50%,75%;",
-	"V,v0.6;"
+	"O56,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%;",
+	"V,v0.61;"
 };
 
 wire        ioctl_download;
@@ -122,7 +122,6 @@ end
 // Clocks
 ////////////////////////////////////////////////////////////////////
 
-reg  ce_14mp;
 reg  ce_7mp;
 reg  ce_7mn;
 reg  ce_1m;
@@ -134,7 +133,6 @@ always @(negedge clk) begin
 	reg  [6:0] cpu_rate = 55;
 
 	div <= div + 1'd1;
-	ce_14mp <= !div[1] & !div[0:0];
 	ce_7mp  <= !div[2] & !div[1:0];
 	ce_7mn  <=  div[2] & !div[1:0];
 	
@@ -236,19 +234,23 @@ end
 // Video 																			   //
 ////////////////////////////////////////////////////////////////////			
 
-wire [7:0] G = {8{pix}};
-wire [7:0] R = status[2] ? 8'd0 : G;
-wire [7:0] B = R;
+wire [2:0] G = {3{pix}};
+wire [2:0] R = status[2] ? 3'd0 : G;
+wire [2:0] B = R;
 
-video_mixer #(10'd0, 10'd0, 3'd4) video_mixer
+video_mixer #(.LINE_LENGTH(448), .HALF_DEPTH(1)) video_mixer
 (
 	.*,
 	.clk_sys(clk),
-	.ce_x2(ce_14mp),
-	.ce_x1(ce_7mp),
+	.ce_pix(ce_7mp),
+	.ce_pix_actual(ce_7mp),
 
-	.scanlines(status[6:5]),
-	.ypbpr_full(1)
+	.scanlines(scandoubler_disable ? 2'b00 : {status[6:5] == 3, status[6:5] == 2}),
+	.hq2x(status[6:5]==1),
+
+	.ypbpr_full(1),
+	.line_start(0),
+	.mono(0)
 );
 
 
